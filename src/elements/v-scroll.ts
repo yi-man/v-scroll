@@ -18,8 +18,8 @@ class VScrollElement extends HTMLElement {
 
     const frame = document.createElement("div"),
       content = document.createElement("slot"),
-      track = document.createElement("b"),
-      thumb = document.createElement("b");
+      track = document.createElement("div"),
+      thumb = document.createElement("div");
 
     frame.setAttribute("part", "frame");
     frame.setAttribute(FRAME_ATTR, "yes");

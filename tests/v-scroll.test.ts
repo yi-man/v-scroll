@@ -21,10 +21,16 @@ describe("registerVScroll", () => {
     document.body.append(host);
 
     const frame = host.shadowRoot?.querySelector('[data_v_scroll_frame="yes"]'),
-      slot = host.shadowRoot?.querySelector("slot");
+      slot = host.shadowRoot?.querySelector("slot"),
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]');
 
     expect(frame?.getAttribute("part")).toBe("frame");
     expect(slot).toBeDefined();
+    expect(track?.getAttribute("part")).toBe("track");
+    expect(track?.tagName).toBe("DIV");
+    expect(thumb?.getAttribute("part")).toBe("thumb");
+    expect(thumb?.tagName).toBe("DIV");
     expect(host.querySelector("p")?.textContent).toBe("Demo content");
   });
 });
