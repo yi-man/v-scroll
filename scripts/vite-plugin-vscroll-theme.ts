@@ -13,10 +13,15 @@ export const vScrollThemePlugin = (): Plugin => {
   let root_dir = "",
     out_dir = "",
     source_path = "",
-    generated_module_path = "";
+    generated_module_path = "",
+    built_module_path = "";
 
-  const removeGeneratedModule = async () => {
+  const removeGeneratedSourceModule = async () => {
     await rm(generated_module_path, { force: true });
+  };
+
+  const removeGeneratedOutputs = async () => {
+    await Promise.all([generated_module_path, built_module_path].filter(Boolean).map((path) => rm(path, { force: true })));
   };
 
   const writeGeneratedModule = async (output_path: string, module_code: string) => {
@@ -30,7 +35,7 @@ export const vScrollThemePlugin = (): Plugin => {
       source_css = await readFile(source_path, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        await removeGeneratedModule();
+        await removeGeneratedOutputs();
       }
 
       throw error;
@@ -47,7 +52,7 @@ export const vScrollThemePlugin = (): Plugin => {
       await writeGeneratedModule(generated_module_path, module_code);
       return module_code;
     } catch (error) {
-      await removeGeneratedModule();
+      await removeGeneratedOutputs();
       throw error;
     }
   };
@@ -59,6 +64,7 @@ export const vScrollThemePlugin = (): Plugin => {
       out_dir = resolve(config.root, config.build?.outDir ?? "dist");
       source_path = join(root_dir, CSS_SOURCE_PATH);
       generated_module_path = join(root_dir, GENERATED_MODULE_PATH);
+      built_module_path = join(out_dir, GENERATED_MODULE_PATH);
 
       await generateThemeModule();
     },
@@ -72,7 +78,7 @@ export const vScrollThemePlugin = (): Plugin => {
     },
     async writeBundle() {
       const module_code = await generateThemeModule();
-      await writeGeneratedModule(join(out_dir, GENERATED_MODULE_PATH), module_code);
+      await writeGeneratedModule(built_module_path, module_code);
     },
     configureServer(server) {
       server.watcher.add(source_path);
@@ -91,7 +97,7 @@ export const vScrollThemePlugin = (): Plugin => {
           return;
         }
 
-        await removeGeneratedModule();
+        await removeGeneratedSourceModule();
         server.ws.send({ type: "full-reload" });
       });
     },
