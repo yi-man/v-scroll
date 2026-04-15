@@ -50,6 +50,21 @@ describe("vScrollThemePlugin", () => {
     });
   });
 
+  it("fails closed and removes stale output when canonical css is invalid", async () => {
+    await mkdir(join(root_dir, "src/theme-imports"), { recursive: true });
+    await writeFile(
+      join(root_dir, "src/theme-imports/v-scroll.js"),
+      'export default ":root{--stale:true}";\n',
+      "utf8",
+    );
+    await writeFile(join(root_dir, "themes/default/v-scroll.css"), "@import ;\n", "utf8");
+
+    await expect(resolveConfig(root_dir)).rejects.toThrow();
+    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
   it("creates the output directory before writing the generated theme module", async () => {
     await writeFile(
       join(root_dir, "themes/default/v-scroll.css"),
@@ -133,6 +148,46 @@ describe("vScrollThemePlugin", () => {
     await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:blue}";\n',
     );
+  });
+
+  it("removes stale output and reloads when the theme css is deleted in dev", async () => {
+    const source_path = join(root_dir, "themes/default/v-scroll.css");
+    await writeFile(source_path, ":root {\n  --color: red;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+
+    let on_unlink: ((changed_path: string) => Promise<void> | void) | undefined;
+    const add = vi.fn();
+    const send = vi.fn();
+
+    await callHook(plugin, "configureServer", {
+      watcher: {
+        add,
+        on: (event_name: string, handler: (changed_path: string) => Promise<void> | void) => {
+          if (event_name === "unlink") {
+            on_unlink = handler;
+          }
+        },
+      },
+      ws: {
+        send,
+      },
+    });
+
+    await rm(source_path);
+    await on_unlink?.(source_path);
+
+    expect(add).toHaveBeenCalledWith(source_path);
+    expect(send).toHaveBeenCalledWith({ type: "full-reload" });
+    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 });
 

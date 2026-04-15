@@ -15,6 +15,10 @@ export const vScrollThemePlugin = (): Plugin => {
     source_path = "",
     generated_module_path = "";
 
+  const removeGeneratedModule = async () => {
+    await rm(generated_module_path, { force: true });
+  };
+
   const writeGeneratedModule = async (output_path: string, module_code: string) => {
     await mkdir(dirname(output_path), { recursive: true });
     await writeFile(output_path, module_code, "utf8");
@@ -26,21 +30,26 @@ export const vScrollThemePlugin = (): Plugin => {
       source_css = await readFile(source_path, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        await rm(generated_module_path, { force: true });
+        await removeGeneratedModule();
       }
 
       throw error;
     }
 
-    const result = transform({
-        filename: source_path,
-        code: Buffer.from(source_css),
-        minify: true,
-      }),
-      module_code = toThemeModule(result.code.toString());
+    try {
+      const result = transform({
+          filename: source_path,
+          code: Buffer.from(source_css),
+          minify: true,
+        }),
+        module_code = toThemeModule(result.code.toString());
 
-    await writeGeneratedModule(generated_module_path, module_code);
-    return module_code;
+      await writeGeneratedModule(generated_module_path, module_code);
+      return module_code;
+    } catch (error) {
+      await removeGeneratedModule();
+      throw error;
+    }
   };
 
   return {
@@ -67,12 +76,22 @@ export const vScrollThemePlugin = (): Plugin => {
     },
     configureServer(server) {
       server.watcher.add(source_path);
-      server.watcher.on("change", async (changed_path) => {
+      const reloadThemeModule = async (changed_path: string) => {
         if (changed_path !== source_path) {
           return;
         }
 
         await generateThemeModule();
+        server.ws.send({ type: "full-reload" });
+      };
+
+      server.watcher.on("change", reloadThemeModule);
+      server.watcher.on("unlink", async (changed_path) => {
+        if (changed_path !== source_path) {
+          return;
+        }
+
+        await removeGeneratedModule();
         server.ws.send({ type: "full-reload" });
       });
     },
