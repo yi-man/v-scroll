@@ -33,9 +33,17 @@ describe("vScrollThemePlugin", () => {
     expect(generated_code).toBe('export default ":root{--color:red}";\n');
   });
 
-  it("exits cleanly without writing output when the theme source file is missing", async () => {
-    await resolveConfig(root_dir);
+  it("fails closed and removes stale output when the theme source file is missing", async () => {
+    await mkdir(join(root_dir, "src/theme-imports"), { recursive: true });
+    await writeFile(
+      join(root_dir, "src/theme-imports/v-scroll.js"),
+      'export default ":root{--stale:true}";\n',
+      "utf8",
+    );
 
+    await expect(resolveConfig(root_dir)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });

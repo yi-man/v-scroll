@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { transform } from "lightningcss";
 import type { Plugin } from "vite";
@@ -19,7 +19,7 @@ export const vScrollThemePlugin = (): Plugin => ({
       source_css = await readFile(source_path, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return;
+        await rm(output_path, { force: true });
       }
 
       throw error;
