@@ -98,8 +98,45 @@ describe("vScrollThemePlugin", () => {
     );
   });
 
-  it("marks the importmap specifier as external so browser resolution stays in play", async () => {
+  it("resolves the importmap specifier to a virtual module in serve mode", async () => {
+    await writeFile(
+      join(root_dir, "themes/default/v-scroll.css"),
+      ":root {\n  --color: red;\n}\n",
+      "utf8",
+    );
+
     const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      command: "serve",
+      build: {
+        outDir: "dist",
+      },
+    });
+
+    const resolved = await callHook(plugin, "resolveId", "$/v-scroll.js");
+
+    expect(resolved).toBe("\0v-scroll-theme");
+    await expect(callHook(plugin, "load", resolved)).resolves.toBe(
+      'export { default } from "/src/theme-imports/v-scroll.js";\n',
+    );
+  });
+
+  it("marks the importmap specifier as external in build mode so browser resolution stays in play", async () => {
+    await writeFile(
+      join(root_dir, "themes/default/v-scroll.css"),
+      ":root {\n  --color: red;\n}\n",
+      "utf8",
+    );
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      command: "build",
+      build: {
+        outDir: "dist",
+      },
+    });
 
     await expect(callHook(plugin, "resolveId", "$/v-scroll.js")).resolves.toEqual({
       id: "$/v-scroll.js",
@@ -178,7 +215,9 @@ describe("vScrollThemePlugin", () => {
       build: {
         outDir: "dist",
       },
+      command: "serve",
     });
+    await callHook(plugin, "writeBundle");
 
     let on_unlink: ((changed_path: string) => Promise<void> | void) | undefined;
     const add = vi.fn();
@@ -206,6 +245,51 @@ describe("vScrollThemePlugin", () => {
     await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("regenerates the generated source module and reloads when the theme css is restored in dev", async () => {
+    const source_path = join(root_dir, "themes/default/v-scroll.css");
+    await writeFile(source_path, ":root {\n  --color: red;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+      command: "serve",
+    });
+
+    let on_add: ((changed_path: string) => Promise<void> | void) | undefined;
+    const add = vi.fn();
+    const send = vi.fn();
+
+    await callHook(plugin, "configureServer", {
+      watcher: {
+        add,
+        on: (event_name: string, handler: (changed_path: string) => Promise<void> | void) => {
+          if (event_name === "add") {
+            on_add = handler;
+          }
+        },
+      },
+      ws: {
+        send,
+      },
+    });
+
+    await rm(source_path);
+    await writeFile(source_path, ":root {\n  --color: green;\n}\n", "utf8");
+    await on_add?.(source_path);
+
+    expect(add).toHaveBeenCalledWith(source_path);
+    expect(send).toHaveBeenCalledWith({ type: "full-reload" });
+    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+      'export default ":root{--color:green}";\n',
+    );
   });
 });
 
