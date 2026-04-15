@@ -1,7 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Plugin } from "vite";
 import { vScrollThemePlugin } from "../scripts/vite-plugin-vscroll-theme";
 
 describe("vScrollThemePlugin", () => {
@@ -63,24 +64,95 @@ describe("vScrollThemePlugin", () => {
       'export default ":root{--color:red}";\n',
     );
   });
+
+  it("marks the importmap specifier as external so browser resolution stays in play", async () => {
+    const plugin = vScrollThemePlugin();
+
+    await expect(callHook(plugin, "resolveId", "$/v-scroll.js")).resolves.toEqual({
+      id: "$/v-scroll.js",
+      external: true,
+    });
+  });
+
+  it("writes the generated theme module into the configured build output path", async () => {
+    await writeFile(
+      join(root_dir, "themes/default/v-scroll.css"),
+      "/* c */\n:root {\n  --color: red;\n}\n",
+      "utf8",
+    );
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+    await callHook(plugin, "writeBundle");
+
+    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+      'export default ":root{--color:red}";\n',
+    );
+  });
+
+  it("regenerates the generated source module and reloads when the theme css changes in dev", async () => {
+    const source_path = join(root_dir, "themes/default/v-scroll.css");
+    await writeFile(source_path, ":root {\n  --color: red;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+
+    let on_change: ((changed_path: string) => Promise<void> | void) | undefined;
+    const add = vi.fn();
+    const send = vi.fn();
+
+    await callHook(plugin, "configureServer", {
+      watcher: {
+        add,
+        on: (event_name: string, handler: (changed_path: string) => Promise<void> | void) => {
+          if (event_name === "change") {
+            on_change = handler;
+          }
+        },
+      },
+      ws: {
+        send,
+      },
+    });
+
+    await writeFile(source_path, ":root {\n  --color: blue;\n}\n", "utf8");
+    await on_change?.(source_path);
+
+    expect(add).toHaveBeenCalledWith(source_path);
+    expect(send).toHaveBeenCalledWith({ type: "full-reload" });
+    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+      'export default ":root{--color:blue}";\n',
+    );
+  });
 });
 
 const resolveConfig = async (root_dir: string) => {
   const plugin = vScrollThemePlugin();
-  const config_resolved = plugin.configResolved;
-  if (typeof config_resolved === "function") {
-    await config_resolved.call(
-      {} as never,
-      {
-        root: root_dir,
-      } as never,
-    );
-  } else {
-    await config_resolved?.handler?.call(
-      {} as never,
-      {
-        root: root_dir,
-      } as never,
-    );
+  await callHook(plugin, "configResolved", {
+    root: root_dir,
+  });
+};
+
+const callHook = async (
+  plugin: Plugin,
+  hook_name: keyof Plugin,
+  ...args: unknown[]
+) => {
+  const hook = plugin[hook_name];
+
+  if (typeof hook === "function") {
+    return await hook.call({} as never, ...args);
   }
+
+  return await hook?.handler?.call({} as never, ...args);
 };

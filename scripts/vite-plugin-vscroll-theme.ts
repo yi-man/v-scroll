@@ -1,25 +1,32 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { transform } from "lightningcss";
 import type { Plugin } from "vite";
 
 const CSS_SOURCE_PATH = "themes/default/v-scroll.css",
-  GENERATED_MODULE_PATH = "src/theme-imports/v-scroll.js";
+  GENERATED_MODULE_PATH = "src/theme-imports/v-scroll.js",
+  IMPORTMAP_SPECIFIER = "$/v-scroll.js";
 
 const toThemeModule = (css_text: string) => `export default ${JSON.stringify(css_text)};\n`;
 
-export const vScrollThemePlugin = (): Plugin => ({
-  name: "v-scroll-theme-plugin",
-  async configResolved(config) {
-    const source_path = join(config.root, CSS_SOURCE_PATH),
-      output_path = join(config.root, GENERATED_MODULE_PATH);
+export const vScrollThemePlugin = (): Plugin => {
+  let root_dir = "",
+    out_dir = "",
+    source_path = "",
+    generated_module_path = "";
 
+  const writeGeneratedModule = async (output_path: string, module_code: string) => {
+    await mkdir(dirname(output_path), { recursive: true });
+    await writeFile(output_path, module_code, "utf8");
+  };
+
+  const generateThemeModule = async () => {
     let source_css: string;
     try {
       source_css = await readFile(source_path, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        await rm(output_path, { force: true });
+        await rm(generated_module_path, { force: true });
       }
 
       throw error;
@@ -32,7 +39,42 @@ export const vScrollThemePlugin = (): Plugin => ({
       }),
       module_code = toThemeModule(result.code.toString());
 
-    await mkdir(dirname(output_path), { recursive: true });
-    await writeFile(output_path, module_code, "utf8");
-  },
-});
+    await writeGeneratedModule(generated_module_path, module_code);
+    return module_code;
+  };
+
+  return {
+    name: "v-scroll-theme-plugin",
+    async configResolved(config) {
+      root_dir = config.root;
+      out_dir = resolve(config.root, config.build?.outDir ?? "dist");
+      source_path = join(root_dir, CSS_SOURCE_PATH);
+      generated_module_path = join(root_dir, GENERATED_MODULE_PATH);
+
+      await generateThemeModule();
+    },
+    resolveId(source) {
+      if (source === IMPORTMAP_SPECIFIER) {
+        return {
+          id: source,
+          external: true,
+        };
+      }
+    },
+    async writeBundle() {
+      const module_code = await generateThemeModule();
+      await writeGeneratedModule(join(out_dir, GENERATED_MODULE_PATH), module_code);
+    },
+    configureServer(server) {
+      server.watcher.add(source_path);
+      server.watcher.on("change", async (changed_path) => {
+        if (changed_path !== source_path) {
+          return;
+        }
+
+        await generateThemeModule();
+        server.ws.send({ type: "full-reload" });
+      });
+    },
+  };
+};
