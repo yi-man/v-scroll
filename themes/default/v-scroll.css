@@ -1,0 +1,56 @@
+:root {
+  --v_scroll_frame_bg: linear-gradient(180deg, #f7f4ef 0%, #ede5d6 100%);
+  --v_scroll_frame_border: #c8baa2;
+  --v_scroll_text: #2c2418;
+  --v_scroll_track_bg: rgb(99 77 40 / 12%);
+  --v_scroll_thumb_bg: #6b5939;
+  --v_scroll_thumb_hover_bg: #4f422b;
+  --v_scroll_thumb_active_bg: #342b1d;
+}
+
+v-scroll {
+  display: block;
+  color: var(--v_scroll_text);
+}
+
+v-scroll > article,
+v-scroll > article h2,
+v-scroll > article p,
+v-scroll > article section {
+  margin: 0;
+}
+
+v-scroll > article > section + section {
+  margin-block-start: 16px;
+}
+
+v-scroll::part(frame) {
+  min-block-size: 320px;
+  padding: 24px;
+  border: 1px solid var(--v_scroll_frame_border);
+  border-radius: 24px;
+  background: var(--v_scroll_frame_bg);
+  box-shadow: 0 24px 60px rgb(73 53 21 / 12%);
+}
+
+v-scroll::part(track) {
+  inline-size: 12px;
+  border-radius: 999px;
+  background: var(--v_scroll_track_bg);
+}
+
+v-scroll::part(thumb) {
+  inline-size: 12px;
+  min-block-size: 48px;
+  border-radius: 999px;
+  background: var(--v_scroll_thumb_bg);
+  transition: background-color 160ms ease;
+}
+
+v-scroll:hover::part(thumb) {
+  background: var(--v_scroll_thumb_hover_bg);
+}
+
+v-scroll[data_dragging="yes"]::part(thumb) {
+  background: var(--v_scroll_thumb_active_bg);
+}
