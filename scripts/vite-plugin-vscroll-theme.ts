@@ -95,8 +95,11 @@ export const vScrollThemePlugin = (): Plugin => {
           return;
         }
 
-        await generateThemeModule();
-        server.ws.send({ type: "full-reload" });
+        try {
+          await generateThemeModule();
+        } finally {
+          server.ws.send({ type: "full-reload" });
+        }
       };
 
       server.watcher.on("change", regenerateAndReload);

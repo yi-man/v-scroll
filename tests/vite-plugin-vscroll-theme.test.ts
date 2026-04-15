@@ -291,6 +291,56 @@ describe("vScrollThemePlugin", () => {
       'export default ":root{--color:green}";\n',
     );
   });
+
+  it("removes stale output, reloads, and surfaces errors when invalid theme css is seen in dev", async () => {
+    const source_path = join(root_dir, "themes/default/v-scroll.css");
+
+    for (const event_name of ["change", "add"] as const) {
+      await rm(join(root_dir, "src"), { recursive: true, force: true });
+      await rm(join(root_dir, "dist"), { recursive: true, force: true });
+      await writeFile(source_path, ":root {\n  --color: red;\n}\n", "utf8");
+
+      const plugin = vScrollThemePlugin();
+      await callHook(plugin, "configResolved", {
+        root: root_dir,
+        build: {
+          outDir: "dist",
+        },
+        command: "serve",
+      });
+      await callHook(plugin, "writeBundle");
+
+      let handler: ((changed_path: string) => Promise<void> | void) | undefined;
+      const add = vi.fn();
+      const send = vi.fn();
+
+      await callHook(plugin, "configureServer", {
+        watcher: {
+          add,
+          on: (registered_event_name: string, registered_handler: (changed_path: string) => Promise<void> | void) => {
+            if (registered_event_name === event_name) {
+              handler = registered_handler;
+            }
+          },
+        },
+        ws: {
+          send,
+        },
+      });
+
+      await writeFile(source_path, "@import ;\n", "utf8");
+
+      await expect(handler?.(source_path)).rejects.toThrow();
+      expect(add).toHaveBeenCalledWith(source_path);
+      expect(send).toHaveBeenCalledWith({ type: "full-reload" });
+      await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    }
+  });
 });
 
 const resolveConfig = async (
