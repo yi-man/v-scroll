@@ -62,9 +62,9 @@ v-scroll {
     user-select: none;
   }
 
-  &[data_scrollable="yes"]:hover::part(track),
-  &[data_scrollable="yes"][data_dragging="yes"]::part(track),
-  &[data_scrollable="yes"]::part(track) {
+  &[data-scrollable="yes"]:hover::part(track),
+  &[data-scrollable="yes"][data-dragging="yes"]::part(track),
+  &[data-scrollable="yes"]::part(track) {
     opacity: 1;
   }
 
@@ -72,7 +72,7 @@ v-scroll {
     background: var(--v-scroll-thumb-bg-hover);
   }
 
-  &[data_dragging="yes"]::part(thumb) {
+  &[data-dragging="yes"]::part(thumb) {
     background: var(--v-scroll-thumb-bg-dragging);
   }
 }

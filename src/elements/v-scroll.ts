@@ -132,8 +132,8 @@ class VScrollElement extends HTMLElement {
   clearDragState = (pointer_id?: number) => {
     const { thumb } = this.ensureParts();
 
-    if (pointer_id !== undefined) {
-      thumb.releasePointerCapture?.(pointer_id);
+    if (pointer_id !== undefined && thumb.hasPointerCapture?.(pointer_id)) {
+      thumb.releasePointerCapture(pointer_id);
     }
 
     this.drag_state = null;

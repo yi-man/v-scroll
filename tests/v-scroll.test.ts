@@ -232,6 +232,7 @@ describe("registerVScroll", () => {
     Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
 
     thumb!.setPointerCapture = vi.fn();
+    thumb!.hasPointerCapture = vi.fn(() => true);
     thumb!.releasePointerCapture = vi.fn();
 
     viewport!.dispatchEvent(new Event("scroll"));
@@ -240,6 +241,37 @@ describe("registerVScroll", () => {
 
     expect(host.dataset.dragging).toBe("no");
     expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(5);
+  });
+
+  it("does not release pointer capture when it is already lost", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+    thumb!.hasPointerCapture = vi.fn(() => false);
+    thumb!.releasePointerCapture = vi.fn(() => {
+      throw new Error("should not release without capture");
+    });
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 15, clientY: 12, bubbles: true }));
+    thumb!.dispatchEvent(new PointerEvent("pointerup", { pointerId: 15, clientY: 12, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb!.releasePointerCapture).not.toHaveBeenCalled();
   });
 
   it("restores the previous body user-select value after pointerup", () => {
@@ -261,6 +293,7 @@ describe("registerVScroll", () => {
 
     Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
     thumb!.setPointerCapture = vi.fn();
+    thumb!.hasPointerCapture = vi.fn(() => true);
     thumb!.releasePointerCapture = vi.fn();
 
     viewport!.dispatchEvent(new Event("scroll"));
@@ -292,6 +325,7 @@ describe("registerVScroll", () => {
 
     Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
     thumb!.setPointerCapture = vi.fn();
+    thumb!.hasPointerCapture = vi.fn(() => true);
     thumb!.releasePointerCapture = vi.fn();
 
     viewport!.dispatchEvent(new Event("scroll"));
