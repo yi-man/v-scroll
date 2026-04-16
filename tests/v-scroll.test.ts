@@ -87,6 +87,22 @@ describe("registerVScroll", () => {
     expect(track?.dataset.visible).toBe("no");
   });
 
+  it("exposes data attributes and part hooks for theme styling", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]'),
+      grab = host.shadowRoot?.querySelector<HTMLImageElement>('[data_v_scroll_grab="yes"]');
+
+    expect(host.dataset.scrollable).toBe("no");
+    expect(track?.dataset.visible ?? "no").toBe("no");
+    expect(thumb?.getAttribute("part")).toBe("thumb");
+    expect(grab?.getAttribute("part")).toBe("grab");
+  });
+
   it("sizes and positions the thumb from viewport geometry", () => {
     registerVScroll();
 

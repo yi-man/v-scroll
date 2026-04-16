@@ -233,7 +233,7 @@ class VScrollElement extends HTMLElement {
   };
 
   connectedCallback() {
-    const { viewport, slot, thumb } = this.ensureParts();
+    const { viewport, slot, thumb, track } = this.ensureParts();
 
     viewport.addEventListener("scroll", this.syncLayout, { passive: true });
     slot.addEventListener("slotchange", this.syncObservedContent);
@@ -245,6 +245,8 @@ class VScrollElement extends HTMLElement {
     this.resize_observer = new ResizeObserver(() => this.scheduleSync());
     this.resize_observer.observe(this);
     this.resize_observer.observe(viewport);
+    this.dataset.scrollable = NO;
+    track.dataset.visible = NO;
     this.syncObservedContent();
     this.dataset.dragging = NO;
   }

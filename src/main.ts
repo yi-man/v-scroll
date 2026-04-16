@@ -19,7 +19,7 @@ const renderApp = () => {
     heading = document.createElement("h1"),
     shell = document.createElement("v-scroll");
 
-  heading.textContent = "v-scroll initialization demo";
+  heading.textContent = "v-scroll demo";
   shell.append(createSeedContent());
   page.append(heading, shell);
   app_root.append(page);
