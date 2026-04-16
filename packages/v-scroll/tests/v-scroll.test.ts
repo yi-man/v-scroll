@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createVScroll, registerVScroll } from "../src/virtual-scroll";
-import { triggerResizeObservers } from "./setup";
+import { TestResizeObserver, triggerResizeObservers } from "./setup";
 import { calcThumbHeight, calcThumbOffset } from "../src/virtual-scroll/math";
 
 const setLayout = ({
@@ -187,6 +187,31 @@ describe("virtual scroll behavior", () => {
 
     expect(disconnect_spy).toHaveBeenCalled();
   });
+
+  it("observes assigned content nodes and reacts to their resize", () => {
+    const host = document.createElement("v-scroll"),
+      content = document.createElement("div");
+    content.textContent = "content";
+    host.append(content);
+    document.body.append(host);
+
+    const instance = createVScroll(host),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
+
+    setLayout({ track, viewport, virtual_height: 300, viewport_height: 400 });
+    instance.sync();
+    expect(host.dataset.scrollable).toBe("no");
+
+    setLayout({ track, viewport, virtual_height: 2000, viewport_height: 400 });
+    triggerResizeObservers(content);
+
+    expect(host.dataset.scrollable).toBe("yes");
+    expect(thumb.style.display).toBe("");
+
+    instance.destroy();
+  });
 });
 
 describe("registerVScroll integration", () => {
@@ -206,5 +231,53 @@ describe("registerVScroll integration", () => {
 
     expect(thumb).toBeTruthy();
     expect(host.dataset.scrollable).toBe("yes");
+  });
+
+  it("disconnects observers on detach and creates a new instance on reattach", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+    const instance_before = (host as HTMLElement & { instance?: unknown }).instance;
+    expect(instance_before).toBeTruthy();
+
+    host.remove();
+    const active_observers = [...TestResizeObserver.instances].filter(
+      (observer) => observer.observed_targets.size > 0,
+    );
+    expect(active_observers).toHaveLength(0);
+    expect((host as HTMLElement & { instance?: unknown }).instance).toBeNull();
+
+    document.body.append(host);
+    const instance_after = (host as HTMLElement & { instance?: unknown }).instance;
+    expect(instance_after).toBeTruthy();
+    expect(instance_after).not.toBe(instance_before);
+  });
+
+  it("updates observed content nodes after slot reassignment", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll"),
+      content_a = document.createElement("div"),
+      content_b = document.createElement("div");
+    content_a.textContent = "a";
+    content_b.textContent = "b";
+    host.append(content_a);
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement;
+
+    setLayout({ track, viewport, virtual_height: 2000, viewport_height: 400 });
+    triggerResizeObservers(content_a);
+    expect(host.dataset.scrollable).toBe("yes");
+
+    host.replaceChildren(content_b);
+    setLayout({ track, viewport, virtual_height: 300, viewport_height: 400 });
+    triggerResizeObservers(content_a);
+    expect(host.dataset.scrollable).toBe("yes");
+
+    triggerResizeObservers(content_b);
+    expect(host.dataset.scrollable).toBe("no");
   });
 });

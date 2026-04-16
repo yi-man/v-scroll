@@ -176,8 +176,25 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   const resize_observer = new ResizeObserver(() => {
     sync();
   });
+  const observed_content_nodes = new Set<Element>();
+  const updateContentObservers = () => {
+    const assigned_nodes = slot.assignedElements({ flatten: true });
+    observed_content_nodes.forEach((node) => {
+      if (!assigned_nodes.includes(node)) {
+        resize_observer.unobserve(node);
+        observed_content_nodes.delete(node);
+      }
+    });
+    assigned_nodes.forEach((node) => {
+      if (!observed_content_nodes.has(node)) {
+        observed_content_nodes.add(node);
+        resize_observer.observe(node);
+      }
+    });
+  };
 
   const handleSlotChange = () => {
+    updateContentObservers();
     sync();
   };
 
@@ -197,6 +214,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     thumb.removeEventListener("lostpointercapture", handleThumbLostPointerCapture);
     slot.removeEventListener("slotchange", handleSlotChange);
     resize_observer.disconnect();
+    observed_content_nodes.clear();
 
     if (drag_state) {
       clearDrag(drag_state.pointer_id);
@@ -217,6 +235,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   slot.addEventListener("slotchange", handleSlotChange);
   resize_observer.observe(host);
   resize_observer.observe(viewport);
+  updateContentObservers();
   host.dataset.dragging = NO;
   host.dataset.scrollable = NO;
   sync();
