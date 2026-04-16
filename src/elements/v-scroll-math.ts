@@ -21,13 +21,8 @@ export const getThumbSize = ({
     return 0;
   }
 
-  const visible_ratio = client_size / scroll_size,
-    usable_track = getUsableTrackSize(track_size),
+  const usable_track = getUsableTrackSize(track_size),
     raw_size = Math.floor((client_size / scroll_size) * usable_track);
-
-  if (visible_ratio <= 0.1) {
-    return Math.min(usable_track, MIN_THUMB_SIZE);
-  }
 
   return Math.min(usable_track, Math.max(MIN_THUMB_SIZE, raw_size));
 };

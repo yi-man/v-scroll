@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  MIN_THUMB_SIZE,
   TRACK_BOTTOM_GAP,
   TRACK_TOP_GAP,
   getScrollTopFromThumbOffset,
@@ -14,7 +13,7 @@ describe("v-scroll math", () => {
   });
 
   it("uses the visible ratio and minimum size for thumb height", () => {
-    expect(getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 })).toBe(MIN_THUMB_SIZE);
+    expect(getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 })).toBe(19);
     expect(getThumbSize({ track_size: 200, client_size: 300, scroll_size: 600 })).toBe(97);
   });
 
