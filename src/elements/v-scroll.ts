@@ -1,4 +1,5 @@
 import grab_icon from "../assets/grab.svg";
+import scroll_icon from "../assets/scroll.svg";
 import {
   TRACK_BOTTOM_GAP,
   TRACK_TOP_GAP,
@@ -12,9 +13,20 @@ const ELEMENT_NAME = "v-scroll",
   VIEWPORT_ATTR = "data_v_scroll_viewport",
   TRACK_ATTR = "data_v_scroll_track",
   THUMB_ATTR = "data_v_scroll_thumb",
-  GRAB_ATTR = "data_v_scroll_grab",
   YES = "yes",
   NO = "no";
+
+// Dynamic cursor styles
+const SCROLL_CURSOR_STYLE_ID = "v-scroll-cursor-style";
+
+const getScrollCursorCss = (scroll_url: string, grab_url: string) => `
+  .v-scroll-cursor-hover * {
+    cursor: url("${scroll_url}") 10 10, ns-resize !important;
+  }
+  .v-scroll-cursor-grab * {
+    cursor: url("${grab_url}") 7 7, grabbing !important;
+  }
+`;
 
 type VScrollParts = {
   frame: HTMLDivElement;
@@ -22,7 +34,6 @@ type VScrollParts = {
   slot: HTMLSlotElement;
   track: HTMLDivElement;
   thumb: HTMLDivElement;
-  grab: HTMLImageElement;
 };
 
 type DragState = {
@@ -36,8 +47,7 @@ const createParts = () => {
     viewport = document.createElement("div"),
     slot = document.createElement("slot"),
     track = document.createElement("div"),
-    thumb = document.createElement("div"),
-    grab = document.createElement("img");
+    thumb = document.createElement("div");
 
   frame.setAttribute("part", "frame");
   frame.setAttribute(FRAME_ATTR, "yes");
@@ -52,18 +62,11 @@ const createParts = () => {
   thumb.setAttribute("part", "thumb");
   thumb.setAttribute(THUMB_ATTR, "yes");
 
-  grab.setAttribute("part", "grab");
-  grab.setAttribute(GRAB_ATTR, "yes");
-  grab.alt = "";
-  grab.draggable = false;
-  grab.src = grab_icon;
-
   viewport.append(slot);
-  thumb.append(grab);
   track.append(thumb);
   frame.append(viewport, track);
 
-  return { frame, viewport, slot, track, thumb, grab };
+  return { frame, viewport, slot, track, thumb };
 };
 
 class VScrollElement extends HTMLElement {
@@ -97,7 +100,8 @@ class VScrollElement extends HTMLElement {
 
   syncLayout = () => {
     const { thumb } = this.ensureParts(),
-      { track_size, client_size, scroll_size, scroll_top, thumb_size } = this.getLayoutMetrics();
+      { track_size, client_size, scroll_size, scroll_top, thumb_size } =
+        this.getLayoutMetrics();
 
     if (thumb_size === 0) {
       this.dataset.scrollable = NO;
@@ -107,7 +111,13 @@ class VScrollElement extends HTMLElement {
       return;
     }
 
-    const thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
+    const thumb_offset = getThumbOffset({
+      track_size,
+      thumb_size,
+      client_size,
+      scroll_size,
+      scroll_top,
+    });
 
     this.dataset.scrollable = YES;
     this.ensureParts().track.dataset.visible = YES;
@@ -122,11 +132,59 @@ class VScrollElement extends HTMLElement {
       scroll_size = viewport.scrollHeight,
       scroll_top = viewport.scrollTop,
       thumb_size = getThumbSize({ track_size, client_size, scroll_size }),
-      thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top }),
+      thumb_offset = getThumbOffset({
+        track_size,
+        thumb_size,
+        client_size,
+        scroll_size,
+        scroll_top,
+      }),
       max_scroll_top = Math.max(0, scroll_size - client_size),
-      drag_range = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size);
+      drag_range = Math.max(
+        0,
+        track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size,
+      );
 
-    return { viewport, track, track_size, client_size, scroll_size, scroll_top, thumb_size, thumb_offset, max_scroll_top, drag_range };
+    return {
+      viewport,
+      track,
+      track_size,
+      client_size,
+      scroll_size,
+      scroll_top,
+      thumb_size,
+      thumb_offset,
+      max_scroll_top,
+      drag_range,
+    };
+  };
+
+  ensureCursorStyle = () => {
+    if (!document.getElementById(SCROLL_CURSOR_STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = SCROLL_CURSOR_STYLE_ID;
+      style.textContent = getScrollCursorCss(scroll_icon, grab_icon);
+      document.head.append(style);
+    }
+  };
+
+  setHoverCursor = () => {
+    this.ensureCursorStyle();
+    document.body.classList.add("v-scroll-cursor-hover");
+  };
+
+  clearHoverCursor = () => {
+    document.body.classList.remove("v-scroll-cursor-hover");
+  };
+
+  setGrabCursor = () => {
+    this.ensureCursorStyle();
+    document.body.classList.remove("v-scroll-cursor-hover");
+    document.body.classList.add("v-scroll-cursor-grab");
+  };
+
+  clearGrabCursor = () => {
+    document.body.classList.remove("v-scroll-cursor-grab");
   };
 
   clearDragState = (pointer_id?: number) => {
@@ -138,8 +196,21 @@ class VScrollElement extends HTMLElement {
 
     this.drag_state = null;
     this.dataset.dragging = NO;
+    this.clearGrabCursor();
     document.body.style.userSelect = this.body_user_select ?? "";
     this.body_user_select = null;
+  };
+
+  handleThumbPointerEnter = () => {
+    if (!this.drag_state) {
+      this.setHoverCursor();
+    }
+  };
+
+  handleThumbPointerLeave = () => {
+    if (!this.drag_state) {
+      this.clearHoverCursor();
+    }
   };
 
   handleThumbPointerDown = (event: PointerEvent) => {
@@ -162,6 +233,8 @@ class VScrollElement extends HTMLElement {
     };
     this.body_user_select = document.body.style.userSelect;
     this.dataset.dragging = YES;
+    this.clearHoverCursor();
+    this.setGrabCursor();
     document.body.style.userSelect = "none";
   };
 
@@ -170,8 +243,11 @@ class VScrollElement extends HTMLElement {
       return;
     }
 
-    const { viewport, track_size, client_size, scroll_size, thumb_size } = this.getLayoutMetrics(),
-      next_offset = this.drag_state.start_thumb_offset + (event.clientY - this.drag_state.start_client_y);
+    const { viewport, track_size, client_size, scroll_size, thumb_size } =
+        this.getLayoutMetrics(),
+      next_offset =
+        this.drag_state.start_thumb_offset +
+        (event.clientY - this.drag_state.start_client_y);
 
     viewport.scrollTop = getScrollTopFromThumbOffset({
       track_size,
@@ -210,7 +286,9 @@ class VScrollElement extends HTMLElement {
   syncObservedContent = () => {
     const { slot } = this.ensureParts();
 
-    this.observed_nodes.forEach((node) => this.resize_observer?.unobserve(node));
+    this.observed_nodes.forEach((node) =>
+      this.resize_observer?.unobserve(node),
+    );
     this.observed_nodes.clear();
 
     slot.assignedElements().forEach((node) => {
@@ -237,11 +315,16 @@ class VScrollElement extends HTMLElement {
 
     viewport.addEventListener("scroll", this.syncLayout, { passive: true });
     slot.addEventListener("slotchange", this.syncObservedContent);
+    thumb.addEventListener("pointerenter", this.handleThumbPointerEnter);
+    thumb.addEventListener("pointerleave", this.handleThumbPointerLeave);
     thumb.addEventListener("pointerdown", this.handleThumbPointerDown);
     thumb.addEventListener("pointermove", this.handleThumbPointerMove);
     thumb.addEventListener("pointerup", this.handleThumbPointerUp);
     thumb.addEventListener("pointercancel", this.handleThumbPointerCancel);
-    thumb.addEventListener("lostpointercapture", this.handleThumbLostPointerCapture);
+    thumb.addEventListener(
+      "lostpointercapture",
+      this.handleThumbLostPointerCapture,
+    );
     this.resize_observer = new ResizeObserver(() => this.scheduleSync());
     this.resize_observer.observe(this);
     this.resize_observer.observe(viewport);
@@ -256,14 +339,21 @@ class VScrollElement extends HTMLElement {
 
     viewport.removeEventListener("scroll", this.syncLayout);
     slot.removeEventListener("slotchange", this.syncObservedContent);
+    thumb.removeEventListener("pointerenter", this.handleThumbPointerEnter);
+    thumb.removeEventListener("pointerleave", this.handleThumbPointerLeave);
     thumb.removeEventListener("pointerdown", this.handleThumbPointerDown);
     thumb.removeEventListener("pointermove", this.handleThumbPointerMove);
     thumb.removeEventListener("pointerup", this.handleThumbPointerUp);
     thumb.removeEventListener("pointercancel", this.handleThumbPointerCancel);
-    thumb.removeEventListener("lostpointercapture", this.handleThumbLostPointerCapture);
+    thumb.removeEventListener(
+      "lostpointercapture",
+      this.handleThumbLostPointerCapture,
+    );
     this.resize_observer?.disconnect();
     this.resize_observer = null;
     this.observed_nodes.clear();
+
+    this.clearHoverCursor();
 
     if (this.drag_state) {
       this.clearDragState(this.drag_state.pointer_id);

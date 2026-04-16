@@ -19,7 +19,7 @@ describe("registerVScroll", () => {
     expect(customElements.get("v-scroll")).toBeDefined();
   });
 
-  it("creates viewport, track, thumb, and grab parts inside shadow dom", () => {
+  it("creates viewport, track, and thumb parts inside shadow dom", () => {
     registerVScroll();
 
     const host = document.createElement("v-scroll");
@@ -30,8 +30,7 @@ describe("registerVScroll", () => {
       viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]'),
       slot = host.shadowRoot?.querySelector("slot"),
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]'),
-      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]'),
-      grab = host.shadowRoot?.querySelector('[data_v_scroll_grab="yes"]') as HTMLImageElement | null;
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]');
 
     expect(frame?.getAttribute("part")).toBe("frame");
     expect(viewport?.getAttribute("part")).toBe("viewport");
@@ -39,15 +38,10 @@ describe("registerVScroll", () => {
     expect(track?.getAttribute("part")).toBe("track");
     expect(track?.getAttribute("aria-hidden")).toBe("true");
     expect(thumb?.getAttribute("part")).toBe("thumb");
-    expect(grab?.getAttribute("part")).toBe("grab");
-    expect(grab?.tagName).toBe("IMG");
     expect(frame?.children.item(0)).toBe(viewport);
     expect(frame?.children.item(1)).toBe(track);
     expect(viewport?.children.item(0)).toBe(slot);
     expect(track?.children.item(0)).toBe(thumb);
-    expect(thumb?.children.item(0)).toBe(grab);
-    expect(grab?.alt).toBe("");
-    expect(grab?.draggable).toBe(false);
     expect(host.querySelector("p")?.textContent).toBe("Demo content");
   });
 
@@ -64,7 +58,6 @@ describe("registerVScroll", () => {
     expect(host.shadowRoot?.querySelectorAll("slot").length).toBe(1);
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_track="yes"]').length).toBe(1);
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_thumb="yes"]').length).toBe(1);
-    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_grab="yes"]').length).toBe(1);
   });
 
   it("hides the track when content does not overflow", () => {
@@ -94,13 +87,11 @@ describe("registerVScroll", () => {
     document.body.append(host);
 
     const track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
-      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]'),
-      grab = host.shadowRoot?.querySelector<HTMLImageElement>('[data_v_scroll_grab="yes"]');
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
 
     expect(host.dataset.scrollable).toBe("no");
     expect(track?.dataset.visible ?? "no").toBe("no");
     expect(thumb?.getAttribute("part")).toBe("thumb");
-    expect(grab?.getAttribute("part")).toBe("grab");
   });
 
   it("sizes and positions the thumb from viewport geometry", () => {

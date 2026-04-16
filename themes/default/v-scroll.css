@@ -55,13 +55,6 @@ v-scroll {
     transition: background-color 160ms ease;
   }
 
-  &::part(grab) {
-    inline-size: 15px;
-    block-size: 14px;
-    pointer-events: none;
-    user-select: none;
-  }
-
   &[data-scrollable="yes"]:hover::part(track),
   &[data-scrollable="yes"][data-dragging="yes"]::part(track),
   &[data-scrollable="yes"]::part(track) {
