@@ -14,19 +14,16 @@ describe("createVScroll", () => {
       shadow_root = host.shadowRoot,
       frame = shadow_root?.querySelector('[data_v_scroll_frame="yes"]'),
       viewport = shadow_root?.querySelector('[data_v_scroll_viewport="yes"]'),
-      virtual_container = shadow_root?.querySelector('[data_v_scroll_virtual="yes"]'),
-      items_container = shadow_root?.querySelector('[data_v_scroll_items="yes"]'),
+      slot = shadow_root?.querySelector("slot"),
       track = shadow_root?.querySelector('[data_v_scroll_track="yes"]'),
       thumb = shadow_root?.querySelector('[data_v_scroll_thumb="yes"]');
 
     expect(frame).toBeDefined();
     expect(viewport).toBeDefined();
-    expect(virtual_container).toBeDefined();
-    expect(items_container).toBeDefined();
+    expect(slot).toBeDefined();
     expect(track).toBeDefined();
     expect(thumb).toBeDefined();
-    expect(viewport?.contains(virtual_container ?? null)).toBe(true);
-    expect(viewport?.contains(items_container ?? null)).toBe(true);
+    expect(viewport?.contains(slot ?? null)).toBe(true);
     expect(track?.contains(thumb ?? null)).toBe(true);
     expect(frame?.contains(viewport ?? null)).toBe(true);
     expect(frame?.contains(track ?? null)).toBe(true);
