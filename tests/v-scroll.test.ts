@@ -25,7 +25,7 @@ describe("registerVScroll", () => {
       slot = host.shadowRoot?.querySelector("slot"),
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]'),
       thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]'),
-      grab = host.shadowRoot?.querySelector('[data_v_scroll_grab="yes"]');
+      grab = host.shadowRoot?.querySelector('[data_v_scroll_grab="yes"]') as HTMLImageElement | null;
 
     expect(frame?.getAttribute("part")).toBe("frame");
     expect(viewport?.getAttribute("part")).toBe("viewport");
@@ -35,6 +35,13 @@ describe("registerVScroll", () => {
     expect(thumb?.getAttribute("part")).toBe("thumb");
     expect(grab?.getAttribute("part")).toBe("grab");
     expect(grab?.tagName).toBe("IMG");
+    expect(frame?.children.item(0)).toBe(viewport);
+    expect(frame?.children.item(1)).toBe(track);
+    expect(viewport?.children.item(0)).toBe(slot);
+    expect(track?.children.item(0)).toBe(thumb);
+    expect(thumb?.children.item(0)).toBe(grab);
+    expect(grab?.alt).toBe("");
+    expect(grab?.draggable).toBe(false);
     expect(host.querySelector("p")?.textContent).toBe("Demo content");
   });
 
@@ -47,5 +54,10 @@ describe("registerVScroll", () => {
     document.body.append(host);
 
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_frame="yes"]').length).toBe(1);
+    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_viewport="yes"]').length).toBe(1);
+    expect(host.shadowRoot?.querySelectorAll("slot").length).toBe(1);
+    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_track="yes"]').length).toBe(1);
+    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_thumb="yes"]').length).toBe(1);
+    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_grab="yes"]').length).toBe(1);
   });
 });
