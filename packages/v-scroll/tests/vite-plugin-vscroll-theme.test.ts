@@ -139,6 +139,102 @@ describe("vScrollThemePlugin", () => {
     );
   });
 
+  it("does not inject an import map when html injection is not configured", async () => {
+    await writeFile(join(root_dir, "themes/default/v-scroll.css"), ":root {\n  --color: red;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+
+    await expect(
+      callHook(plugin, "transformIndexHtml", "<html><head></head><body></body></html>", { path: "/index.html" }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("injects an import map for a configured custom theme html path", async () => {
+    await mkdir(join(root_dir, "themes/night"), { recursive: true });
+    await writeFile(join(root_dir, "themes/night/v-scroll.css"), ":root {\n  --color: blue;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin({
+      css_source_path: "themes/night/v-scroll.css",
+      generated_module_path: "public/themes/night/v-scroll.js",
+    });
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+
+    const transformed_html = await callHook(
+      plugin,
+      "transformIndexHtml",
+      "<html><head><title>demo</title></head><body></body></html>",
+      { path: "/index.html" },
+    );
+
+    expect(transformed_html).toMatchObject({
+      html: "<html><head><title>demo</title></head><body></body></html>",
+      tags: [
+        expect.objectContaining({
+          tag: "script",
+          attrs: { type: "importmap" },
+          injectTo: "head-prepend",
+        }),
+      ],
+    });
+    expect(
+      (transformed_html as { tags: Array<{ children: string }> }).tags[0]?.children,
+    ).toContain('"$/v-scroll.js":"/themes/night/v-scroll.js"');
+  });
+
+  it("writes a custom public theme module into dist without keeping the public prefix", async () => {
+    await mkdir(join(root_dir, "themes/night"), { recursive: true });
+    await writeFile(join(root_dir, "themes/night/v-scroll.css"), ":root {\n  --color: blue;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin({
+      css_source_path: "themes/night/v-scroll.css",
+      generated_module_path: "public/themes/night/v-scroll.js",
+    });
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+    await callHook(plugin, "writeBundle");
+
+    await expect(readFile(join(root_dir, "dist/themes/night/v-scroll.js"), "utf8")).resolves.toBe(
+      'export default ":root{--color:blue}";\n',
+    );
+    await expect(readFile(join(root_dir, "dist/public/themes/night/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("rejects custom generated module paths whose filename is not v-scroll.js", async () => {
+    await mkdir(join(root_dir, "themes/night"), { recursive: true });
+    await writeFile(join(root_dir, "themes/night/v-scroll.css"), ":root {\n  --color: blue;\n}\n", "utf8");
+
+    const plugin = vScrollThemePlugin({
+      css_source_path: "themes/night/v-scroll.css",
+      generated_module_path: "public/themes/night/custom-theme.js",
+    });
+
+    await expect(
+      callHook(plugin, "configResolved", {
+        root: root_dir,
+        build: {
+          outDir: "dist",
+        },
+      }),
+    ).rejects.toThrow("v-scroll.js");
+  });
+
   it("regenerates the generated source module and reloads when the theme css changes in dev", async () => {
     const source_path = join(root_dir, "themes/default/v-scroll.css");
     await writeFile(source_path, ":root {\n  --color: red;\n}\n", "utf8");
