@@ -4,6 +4,8 @@
   --v-scroll-text: #0f172a;
   --v-scroll-track-width: 10px;
   --v-scroll-track-inset: 3px;
+  --v-scroll-track-top-gap: 3px;
+  --v-scroll-track-bottom-gap: 3px;
   --v-scroll-thumb-radius: 999px;
   --v-scroll-thumb-bg: rgb(15 23 42 / 22%);
   --v-scroll-thumb-bg-hover: rgb(15 23 42 / 34%);
