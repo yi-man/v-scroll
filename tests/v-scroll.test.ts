@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerVScroll } from "../src/elements/v-scroll";
+import { triggerResizeObservers } from "./setup";
+
+const waitForAnimationFrame = async () => {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+};
 
 describe("registerVScroll", () => {
   beforeEach(() => {
@@ -107,6 +112,49 @@ describe("registerVScroll", () => {
     expect(thumb?.style.transform).toBe("translateY(58px)");
   });
 
+  it("syncs layout from observed slotted content resizes", async () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    host.innerHTML = "<article><p>Demo content</p></article>";
+    document.body.append(host);
+
+    const article = host.querySelector("article"),
+      viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    await waitForAnimationFrame();
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 300, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+
+    triggerResizeObservers(article!);
+    await waitForAnimationFrame();
+
+    expect(host.dataset.scrollable).toBe("yes");
+    expect(track?.dataset.visible).toBe("yes");
+    expect(thumb?.style.blockSize).toBe("58px");
+    expect(thumb?.style.transform).toBe("translateY(58px)");
+  });
+
+  it("preserves external body user-select state on disconnect", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "none";
+
+    document.body.append(host);
+    host.remove();
+
+    expect(document.body.style.userSelect).toBe("none");
+  });
+
   it("disconnects resize observers when the element leaves the document", () => {
     registerVScroll();
 
@@ -117,5 +165,43 @@ describe("registerVScroll", () => {
     host.remove();
 
     expect(disconnect_spy).toHaveBeenCalled();
+  });
+
+  it("stays quiescent for resize-driven sync after disconnect", async () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    host.innerHTML = "<article><p>Demo content</p></article>";
+    document.body.append(host);
+
+    const article = host.querySelector("article"),
+      viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]');
+
+    await waitForAnimationFrame();
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+
+    triggerResizeObservers(article!);
+    await waitForAnimationFrame();
+
+    expect(host.dataset.scrollable).toBe("yes");
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 300 },
+    });
+
+    host.remove();
+    triggerResizeObservers(article!);
+    await waitForAnimationFrame();
+
+    expect(host.dataset.scrollable).toBe("yes");
+    expect(track?.dataset.visible).toBe("yes");
   });
 });

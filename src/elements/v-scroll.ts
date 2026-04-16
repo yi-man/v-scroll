@@ -149,7 +149,6 @@ class VScrollElement extends HTMLElement {
     this.resize_observer = null;
     this.observed_nodes.clear();
     this.dataset.dragging = NO;
-    document.body.style.userSelect = "";
 
     if (this.raf_id !== null) {
       cancelAnimationFrame(this.raf_id);
