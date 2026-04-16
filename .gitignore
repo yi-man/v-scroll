@@ -5,3 +5,4 @@ coverage
 src/theme-imports/v-scroll.js
 
 .superpowers
+.playwright-mcp
