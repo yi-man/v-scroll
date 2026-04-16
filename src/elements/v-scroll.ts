@@ -143,7 +143,7 @@ class VScrollElement extends HTMLElement {
   };
 
   handleThumbPointerDown = (event: PointerEvent) => {
-    if (this.drag_state) {
+    if (this.drag_state || event.button !== 0) {
       return;
     }
 
@@ -199,6 +199,14 @@ class VScrollElement extends HTMLElement {
     this.clearDragState(event.pointerId);
   };
 
+  handleThumbLostPointerCapture = (event: PointerEvent) => {
+    if (!this.drag_state || event.pointerId !== this.drag_state.pointer_id) {
+      return;
+    }
+
+    this.clearDragState();
+  };
+
   syncObservedContent = () => {
     const { slot } = this.ensureParts();
 
@@ -233,6 +241,7 @@ class VScrollElement extends HTMLElement {
     thumb.addEventListener("pointermove", this.handleThumbPointerMove);
     thumb.addEventListener("pointerup", this.handleThumbPointerUp);
     thumb.addEventListener("pointercancel", this.handleThumbPointerCancel);
+    thumb.addEventListener("lostpointercapture", this.handleThumbLostPointerCapture);
     this.resize_observer = new ResizeObserver(() => this.scheduleSync());
     this.resize_observer.observe(this);
     this.resize_observer.observe(viewport);
@@ -249,6 +258,7 @@ class VScrollElement extends HTMLElement {
     thumb.removeEventListener("pointermove", this.handleThumbPointerMove);
     thumb.removeEventListener("pointerup", this.handleThumbPointerUp);
     thumb.removeEventListener("pointercancel", this.handleThumbPointerCancel);
+    thumb.removeEventListener("lostpointercapture", this.handleThumbLostPointerCapture);
     this.resize_observer?.disconnect();
     this.resize_observer = null;
     this.observed_nodes.clear();

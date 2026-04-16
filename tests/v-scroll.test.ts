@@ -169,6 +169,34 @@ describe("registerVScroll", () => {
     expect(document.body.style.userSelect).toBe("text");
   });
 
+  it("does not start dragging for a non-primary button press", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "text";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 4, button: 1, clientY: 16, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb!.setPointerCapture).not.toHaveBeenCalled();
+    expect(document.body.style.userSelect).toBe("text");
+  });
+
   it("clears dragging state on pointerup", () => {
     registerVScroll();
 
@@ -256,6 +284,34 @@ describe("registerVScroll", () => {
 
     expect(host.dataset.dragging).toBe("no");
     expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(9);
+    expect(document.body.style.userSelect).toBe("all");
+  });
+
+  it("clears dragging state on lostpointercapture and restores selection state", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "all";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 10, clientY: 12, bubbles: true }));
+    thumb!.dispatchEvent(new PointerEvent("lostpointercapture", { pointerId: 10, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
     expect(document.body.style.userSelect).toBe("all");
   });
 
