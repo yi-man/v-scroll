@@ -1,76 +1,178 @@
 import { describe, expect, it } from "vitest";
 import {
-  MIN_THUMB_SIZE,
-  TRACK_BOTTOM_GAP,
-  TRACK_TOP_GAP,
-  getScrollTopFromThumbOffset,
-  getThumbOffset,
-  getThumbSize,
-} from "../src/elements/v-scroll-math";
+  BUFFER_DEFAULT,
+  ITEM_HEIGHT_DEFAULT,
+  THUMB_MIN_SIZE,
+  calcScrollTopFromThumbOffset,
+  calcThumbHeight,
+  calcThumbOffset,
+  calcVirtualHeight,
+  calcVisibleRange,
+} from "../src/virtual-scroll/math";
 
-describe("v-scroll math", () => {
-  it("returns zero thumb size when content does not overflow", () => {
-    expect(getThumbSize({ track_size: 200, client_size: 200, scroll_size: 200 })).toBe(0);
+describe("virtual-scroll math", () => {
+  describe("calcVirtualHeight", () => {
+    it("returns 0 when no items", () => {
+      expect(calcVirtualHeight({ item_count: 0, item_height: 50 })).toBe(0);
+    });
+
+    it("calculates total height from item count and height", () => {
+      expect(calcVirtualHeight({ item_count: 100, item_height: 50 })).toBe(5000);
+      expect(calcVirtualHeight({ item_count: 1000, item_height: 30 })).toBe(30000);
+    });
   });
 
-  it("uses the visible ratio and minimum size for thumb height", () => {
-    expect(getThumbSize({ track_size: 200, client_size: 10, scroll_size: 1000 })).toBe(MIN_THUMB_SIZE);
-    expect(getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 })).toBe(19);
-    expect(getThumbSize({ track_size: 200, client_size: 300, scroll_size: 600 })).toBe(97);
+  describe("calcVisibleRange", () => {
+    it("returns empty range when no items", () => {
+      const result = calcVisibleRange({
+        scroll_top: 0,
+        viewport_height: 400,
+        item_height: 50,
+        item_count: 0,
+        buffer: 3,
+      });
+
+      expect(result.start).toBe(0);
+      expect(result.end).toBe(0);
+    });
+
+    it("calculates visible range with buffer", () => {
+      const result = calcVisibleRange({
+        scroll_top: 200,
+        viewport_height: 400,
+        item_height: 50,
+        item_count: 100,
+        buffer: 3,
+      });
+
+      expect(result.start).toBe(1);
+      expect(result.end).toBe(15);
+    });
+
+    it("clamps range to item count", () => {
+      const result = calcVisibleRange({
+        scroll_top: 4800,
+        viewport_height: 400,
+        item_height: 50,
+        item_count: 100,
+        buffer: 3,
+      });
+
+      expect(result.end).toBe(100);
+    });
+
+    it("uses default buffer", () => {
+      const result = calcVisibleRange({
+        scroll_top: 0,
+        viewport_height: 400,
+        item_height: 50,
+        item_count: 100,
+      });
+
+      expect(result.start).toBe(0);
+      expect(result.end).toBe(11);
+    });
   });
 
-  it("maps scrollTop into the effective track range", () => {
-    const thumb_size = 40;
+  describe("calcThumbOffset", () => {
+    it("maps scroll position to thumb offset", () => {
+      const result = calcThumbOffset({
+        scroll_top: 2500,
+        virtual_height: 5000,
+        viewport_height: 400,
+        track_height: 200,
+        thumb_height: 40,
+      });
 
-    expect(
-      getThumbOffset({
-        track_size: 200,
-        thumb_size,
-        client_size: 300,
-        scroll_size: 900,
-        scroll_top: 300,
-      }),
-    ).toBe(77);
+      expect(result).toBe(87);
+    });
+
+    it("returns 0 at top", () => {
+      const result = calcThumbOffset({
+        scroll_top: 0,
+        virtual_height: 5000,
+        viewport_height: 400,
+        track_height: 200,
+        thumb_height: 40,
+      });
+
+      expect(result).toBe(0);
+    });
+
+    it("returns max at bottom", () => {
+      const result = calcThumbOffset({
+        scroll_top: 4600,
+        virtual_height: 5000,
+        viewport_height: 400,
+        track_height: 200,
+        thumb_height: 40,
+      });
+
+      expect(result).toBe(160);
+    });
   });
 
-  it("clamps scrollTop overshoot to the effective track range", () => {
-    expect(
-      getThumbOffset({
-        track_size: 200,
-        thumb_size: 40,
-        client_size: 300,
-        scroll_size: 900,
-        scroll_top: 900,
-      }),
-    ).toBe(154);
+  describe("calcScrollTopFromThumbOffset", () => {
+    it("maps thumb offset to scroll position", () => {
+      const result = calcScrollTopFromThumbOffset({
+        thumb_offset: 87,
+        virtual_height: 5000,
+        viewport_height: 400,
+        track_height: 200,
+        thumb_height: 40,
+      });
+
+      expect(result).toBe(2501);
+    });
+
+    it("returns 0 at top", () => {
+      const result = calcScrollTopFromThumbOffset({
+        thumb_offset: 0,
+        virtual_height: 5000,
+        viewport_height: 400,
+        track_height: 200,
+        thumb_height: 40,
+      });
+
+      expect(result).toBe(0);
+    });
   });
 
-  it("maps an in-range thumb offset back to proportional scrollTop", () => {
-    expect(
-      getScrollTopFromThumbOffset({
-        track_size: 200,
-        thumb_size: 40,
-        client_size: 300,
-        scroll_size: 900,
-        thumb_offset: 77,
-      }),
-    ).toBe(300);
+  describe("calcThumbHeight", () => {
+    it("returns 0 when content fits viewport", () => {
+      expect(
+        calcThumbHeight({
+          viewport_height: 400,
+          virtual_height: 400,
+          track_height: 180,
+        }),
+      ).toBe(0);
+    });
+
+    it("uses visible ratio and minimum size", () => {
+      expect(
+        calcThumbHeight({
+          viewport_height: 10,
+          virtual_height: 1000,
+          track_height: 200,
+        }),
+      ).toBe(THUMB_MIN_SIZE);
+
+      expect(
+        calcThumbHeight({
+          viewport_height: 100,
+          virtual_height: 1000,
+          track_height: 200,
+        }),
+      ).toBe(20);
+    });
   });
 
-  it("maps thumb offset back to max scrollTop when the thumb overshoots the track", () => {
-    expect(
-      getScrollTopFromThumbOffset({
-        track_size: 200,
-        thumb_size: 40,
-        client_size: 300,
-        scroll_size: 900,
-        thumb_offset: 999,
-      }),
-    ).toBe(600);
-  });
-
-  it("exposes the PDF gap constants", () => {
-    expect(TRACK_TOP_GAP).toBe(3);
-    expect(TRACK_BOTTOM_GAP).toBe(3);
+  describe("constants", () => {
+    it("exposes default constants", () => {
+      expect(ITEM_HEIGHT_DEFAULT).toBe(50);
+      expect(BUFFER_DEFAULT).toBe(3);
+      expect(THUMB_MIN_SIZE).toBe(16);
+    });
   });
 });
