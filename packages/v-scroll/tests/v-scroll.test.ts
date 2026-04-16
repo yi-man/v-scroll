@@ -1,26 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createVScroll, registerVScroll } from "../src/virtual-scroll";
 import { triggerResizeObservers } from "./setup";
+import { calcThumbHeight, calcThumbOffset } from "../src/virtual-scroll/math";
 
 const setLayout = ({
   track,
   track_height = 180,
   viewport,
   viewport_height = 400,
+  virtual_height = 2000,
+  scroll_top = 0,
 }: {
   track: HTMLElement;
   track_height?: number;
   viewport: HTMLElement;
   viewport_height?: number;
+  virtual_height?: number;
+  scroll_top?: number;
 }) => {
   Object.defineProperty(viewport, "clientHeight", {
     configurable: true,
     value: viewport_height,
   });
+  Object.defineProperty(viewport, "scrollHeight", {
+    configurable: true,
+    value: virtual_height,
+  });
   Object.defineProperty(track, "clientHeight", {
     configurable: true,
     value: track_height,
   });
+  viewport.scrollTop = scroll_top;
 };
 
 describe("virtual scroll behavior", () => {
@@ -28,51 +38,67 @@ describe("virtual scroll behavior", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders only visible items", () => {
+  it("proxies light DOM nodes through slot", () => {
     const host = document.createElement("v-scroll");
+    const child = document.createElement("div");
+    child.textContent = "hello";
+    host.append(child);
     document.body.append(host);
 
-    const instance = createVScroll(host, { item_height: 50 }),
-      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
-      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
-      data = Array.from({ length: 100 }, (_, index) => ({
-        id: index,
-        text: `Item ${index}`,
-      }));
+    const instance = createVScroll(host);
 
-    setLayout({ track, viewport });
-    instance.setData(data);
-    instance.sync();
+    const slot = host.shadowRoot?.querySelector("slot") as HTMLSlotElement | null;
+    const assigned = slot ? Array.from(slot.assignedNodes()) : [];
 
-    const items = host.shadowRoot?.querySelectorAll(".v-scroll-item");
-
-    expect(items?.length).toBeLessThan(15);
-    expect(items?.length).toBeGreaterThan(5);
+    expect(assigned).toContain(child);
 
     instance.destroy();
   });
 
-  it("updates visible items on scroll", () => {
+  it("syncs thumb position on scroll", () => {
     const host = document.createElement("v-scroll");
     document.body.append(host);
 
-    const instance = createVScroll(host, { item_height: 50 }),
+    const instance = createVScroll(host),
       viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
-      data = Array.from({ length: 100 }, (_, index) => ({
-        id: index,
-        text: `Item ${index}`,
-      }));
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
 
-    setLayout({ track, viewport });
-    instance.setData(data);
-    viewport.scrollTop = 500;
+    const viewport_height = 400,
+      track_height = 200,
+      virtual_height = 5000;
+
+    setLayout({ track, viewport, track_height, viewport_height, virtual_height, scroll_top: 0 });
+    instance.sync();
+
+    const thumb_height = calcThumbHeight({
+      track_height,
+      viewport_height,
+      virtual_height,
+    });
+
+    expect(thumb.style.transform).toBe(
+      `translateY(${calcThumbOffset({
+        scroll_top: 0,
+        thumb_height,
+        track_height,
+        viewport_height,
+        virtual_height,
+      })}px)`,
+    );
+
+    viewport.scrollTop = 2500;
     viewport.dispatchEvent(new Event("scroll"));
 
-    const items = host.shadowRoot?.querySelectorAll(".v-scroll-item"),
-      first_item = items?.item(0);
-
-    expect(first_item?.textContent).toContain("Item 7");
+    expect(thumb.style.transform).toBe(
+      `translateY(${calcThumbOffset({
+        scroll_top: 2500,
+        thumb_height,
+        track_height,
+        viewport_height,
+        virtual_height,
+      })}px)`,
+    );
 
     instance.destroy();
   });
@@ -86,8 +112,7 @@ describe("virtual scroll behavior", () => {
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
       thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
 
-    setLayout({ track, viewport });
-    instance.setData([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }]);
+    setLayout({ track, viewport, virtual_height: 400, viewport_height: 400 });
     instance.sync();
 
     expect(host.dataset.scrollable).toBe("no");
@@ -103,19 +128,14 @@ describe("virtual scroll behavior", () => {
     const instance = createVScroll(host, { item_height: 50 }),
       viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
-      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement,
-      data = Array.from({ length: 100 }, (_, index) => ({
-        id: index,
-        text: `Item ${index}`,
-      }));
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
 
-    setLayout({ track, viewport });
-    instance.setData(data);
+    setLayout({ track, viewport, virtual_height: 5000, viewport_height: 400 });
+    instance.sync();
     expect(thumb.style.cursor).toContain("url(");
     expect(thumb.style.cursor).toContain("data:image/svg+xml");
     expect(thumb.style.cursor).toContain("ns-resize");
     expect(document.body.style.cursor).toBe("");
-
     instance.destroy();
   });
 
@@ -127,20 +147,17 @@ describe("virtual scroll behavior", () => {
     const instance = createVScroll(host, { item_height: 50 }),
       viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
-      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement,
-      data = Array.from({ length: 100 }, (_, index) => ({
-        id: index,
-        text: `Item ${index}`,
-      }));
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
 
-    setLayout({ track, viewport });
+    setLayout({ track, viewport, virtual_height: 5000, viewport_height: 400 });
+    instance.sync();
     thumb.setPointerCapture = vi.fn();
     thumb.hasPointerCapture = vi.fn(() => true);
     thumb.releasePointerCapture = vi.fn();
-    instance.setData(data);
 
-    thumb.dispatchEvent(new PointerEvent("pointerenter", { pointerId: 7, clientY: 20, bubbles: true }));
-    thumb.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 7, clientY: 20, bubbles: true }));
+    thumb.dispatchEvent(
+      new PointerEvent("pointerdown", { pointerId: 7, clientY: 20, bubbles: true, button: 0 }),
+    );
 
     expect(host.dataset.dragging).toBe("yes");
     expect(thumb.style.cursor).toContain("url(");
@@ -173,29 +190,21 @@ describe("virtual scroll behavior", () => {
 });
 
 describe("registerVScroll integration", () => {
-  it("renders large dataset efficiently", () => {
+  it("creates shadow structure and updates scrollable state", () => {
     registerVScroll();
 
     const host = document.createElement("v-scroll");
-    host.setAttribute("item-height", "50");
+    host.append(document.createElement("div"));
     document.body.append(host);
 
     const viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
-      data = Array.from({ length: 100000 }, (_, index) => ({
-        id: index,
-        name: `User ${index}`,
-      }));
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
 
-    setLayout({ track, viewport });
-    (host as HTMLElement & { data: unknown[] }).data = data;
+    setLayout({ track, viewport, virtual_height: 5000, viewport_height: 400 });
     triggerResizeObservers(host, viewport);
 
-    const items = host.shadowRoot?.querySelectorAll(".v-scroll-item"),
-      virtual_container = host.shadowRoot?.querySelector('[data_v_scroll_virtual="yes"]') as HTMLElement;
-
-    expect(items?.length).toBeLessThan(20);
-    expect(items?.length).toBeGreaterThan(0);
-    expect(Number.parseInt(virtual_container.style.height || "0", 10)).toBe(100000 * 50);
+    expect(thumb).toBeTruthy();
+    expect(host.dataset.scrollable).toBe("yes");
   });
 });

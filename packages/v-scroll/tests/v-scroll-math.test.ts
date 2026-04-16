@@ -96,7 +96,7 @@ describe("virtual-scroll math", () => {
         thumb_height: 40,
       });
 
-      expect(result).toBe(0);
+      expect(result).toBe(3);
     });
 
     it("returns max at bottom", () => {
@@ -108,7 +108,7 @@ describe("virtual-scroll math", () => {
         thumb_height: 40,
       });
 
-      expect(result).toBe(160);
+      expect(result).toBe(157);
     });
   });
 
@@ -122,7 +122,7 @@ describe("virtual-scroll math", () => {
         thumb_height: 40,
       });
 
-      expect(result).toBe(2501);
+      expect(result).toBe(2509);
     });
 
     it("returns 0 at top", () => {
@@ -164,7 +164,7 @@ describe("virtual-scroll math", () => {
           virtual_height: 1000,
           track_height: 200,
         }),
-      ).toBe(20);
+      ).toBe(19);
     });
   });
 

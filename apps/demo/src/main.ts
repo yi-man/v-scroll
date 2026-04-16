@@ -24,19 +24,22 @@ const renderApp = () => {
   title.style.cssText =
     "font-size: 28px; font-weight: 600; margin: 0 0 24px 0; color: #1a1a1a;";
 
-  desc.textContent = "Virtual scrolling demo: 100k rows with visible-window rendering";
+  desc.textContent = "Custom scrollbar demo: native overflow + slotted content";
   desc.style.cssText =
     "font-size: 14px; color: #666; margin: 0 0 24px 0; line-height: 1.5;";
 
-  vscroll.setAttribute("item-height", "50");
-  vscroll.style.cssText =
-    "border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; background: #fff; block-size: 400px;";
+  vscroll.style.cssText = "block-size: 400px;";
 
   container.append(title, desc, vscroll);
   app_root.append(container);
 
-  (vscroll as HTMLElement & { data: ReturnType<typeof createDemoData> }).data =
-    createDemoData();
+  const data = createDemoData();
+  for (const item of data) {
+    const el = document.createElement("div");
+    el.setAttribute("part", "item");
+    el.textContent = item.title;
+    vscroll.append(el);
+  }
 };
 
 renderApp();

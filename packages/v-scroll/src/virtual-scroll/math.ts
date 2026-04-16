@@ -45,22 +45,28 @@ export const calcThumbOffset = ({
   viewport_height,
   track_height,
   thumb_height,
+  top_gap = TRACK_TOP_GAP,
+  bottom_gap = TRACK_BOTTOM_GAP,
 }: {
   scroll_top: number;
   virtual_height: number;
   viewport_height: number;
   track_height: number;
   thumb_height: number;
+  top_gap?: number;
+  bottom_gap?: number;
 }) => {
   const max_scroll_top = Math.max(0, virtual_height - viewport_height),
-    effective_track = Math.max(0, track_height - thumb_height),
+    usable_track_height = Math.max(0, track_height - top_gap - bottom_gap),
+    effective_track = Math.max(0, usable_track_height - thumb_height),
     safe_scroll_top = clamp(scroll_top, 0, max_scroll_top);
 
   if (max_scroll_top === 0 || effective_track === 0) {
-    return 0;
+    return top_gap;
   }
 
-  return Math.round((safe_scroll_top / max_scroll_top) * effective_track);
+  const thumb_offset = Math.round((safe_scroll_top / max_scroll_top) * effective_track);
+  return top_gap + thumb_offset;
 };
 
 export const calcScrollTopFromThumbOffset = ({
@@ -69,41 +75,53 @@ export const calcScrollTopFromThumbOffset = ({
   viewport_height,
   track_height,
   thumb_height,
+  top_gap = TRACK_TOP_GAP,
+  bottom_gap = TRACK_BOTTOM_GAP,
 }: {
   thumb_offset: number;
   virtual_height: number;
   viewport_height: number;
   track_height: number;
   thumb_height: number;
+  top_gap?: number;
+  bottom_gap?: number;
 }) => {
   const max_scroll_top = Math.max(0, virtual_height - viewport_height),
-    effective_track = Math.max(0, track_height - thumb_height),
-    safe_thumb_offset = clamp(thumb_offset, 0, effective_track);
+    usable_track_height = Math.max(0, track_height - top_gap - bottom_gap),
+    effective_track = Math.max(0, usable_track_height - thumb_height),
+    safe_thumb_offset = clamp(thumb_offset, top_gap, top_gap + effective_track);
 
   if (max_scroll_top === 0 || effective_track === 0) {
     return 0;
   }
 
-  return Math.round((safe_thumb_offset / effective_track) * max_scroll_top);
+  const thumb_effective_offset = safe_thumb_offset - top_gap;
+  return Math.round((thumb_effective_offset / effective_track) * max_scroll_top);
 };
 
 export const calcThumbHeight = ({
   viewport_height,
   virtual_height,
   track_height,
+  top_gap = TRACK_TOP_GAP,
+  bottom_gap = TRACK_BOTTOM_GAP,
   min_size = THUMB_MIN_SIZE,
 }: {
   viewport_height: number;
   virtual_height: number;
   track_height: number;
+  top_gap?: number;
+  bottom_gap?: number;
   min_size?: number;
 }) => {
-  if (virtual_height <= viewport_height || track_height <= 0) {
+  const usable_track_height = Math.max(0, track_height - top_gap - bottom_gap);
+
+  if (virtual_height <= viewport_height || track_height <= 0 || usable_track_height <= 0) {
     return 0;
   }
 
   const visible_ratio = viewport_height / virtual_height,
-    raw_height = Math.floor(visible_ratio * track_height);
+    raw_height = Math.floor(visible_ratio * usable_track_height);
 
-  return Math.min(track_height, Math.max(min_size, raw_height));
+  return Math.min(usable_track_height, Math.max(min_size, raw_height));
 };

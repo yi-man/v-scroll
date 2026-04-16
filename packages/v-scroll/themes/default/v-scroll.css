@@ -17,6 +17,7 @@ v-scroll {
 
   &::part(frame) {
     position: relative;
+    block-size: 100%;
     min-block-size: 320px;
     overflow: hidden;
     border: 1px solid var(--v-scroll-frame-border);
@@ -54,8 +55,8 @@ v-scroll {
 
   &::part(track) {
     position: absolute;
-    inset-block: 3px;
-    inset-inline-end: 3px;
+    inset-block: 0;
+    inset-inline-end: var(--v-scroll-track-inset);
     inline-size: var(--v-scroll-track-width);
     border-radius: 999px;
     opacity: 0;

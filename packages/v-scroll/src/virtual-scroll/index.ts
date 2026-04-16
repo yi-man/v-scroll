@@ -1,41 +1,14 @@
 import grab_icon from "../assets/grab.svg";
 import scroll_icon from "../assets/scroll.svg";
 import { createParts } from "./dom";
-import {
-  BUFFER_DEFAULT,
-  ITEM_HEIGHT_DEFAULT,
-  calcScrollTopFromThumbOffset,
-  calcThumbHeight,
-  calcThumbOffset,
-  calcVirtualHeight,
-  calcVisibleRange,
-} from "./math";
+import { calcScrollTopFromThumbOffset, calcThumbHeight, calcThumbOffset } from "./math";
 
 const ELEMENT_NAME = "v-scroll",
-  ITEM_CLASS = "v-scroll-item",
   NO = "no",
   YES = "yes";
 
 const SCROLL_CURSOR = `url("${scroll_icon}") 10 10, ns-resize`,
   GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`;
-
-const getRenderItem = (render_item?: (item: unknown, index: number) => string) =>
-  render_item ??
-  ((item: unknown) => {
-    if (typeof item === "string" || typeof item === "number") {
-      return String(item);
-    }
-
-    if (item && typeof item === "object") {
-      const entry = item as Record<string, unknown>;
-
-      return String(entry.text ?? entry.name ?? entry.title ?? "");
-    }
-
-    return "";
-  });
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export type VScrollConfig = {
   item_height?: number;
@@ -44,9 +17,6 @@ export type VScrollConfig = {
 };
 
 export type VScrollState = {
-  buffer: number;
-  data: unknown[];
-  item_height: number;
   scroll_top: number;
   thumb_height: number;
   track_height: number;
@@ -55,22 +25,19 @@ export type VScrollState = {
 
 export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => {
   const shadow_root = host.shadowRoot ?? host.attachShadow({ mode: "open" }),
-    { frame, items_container, thumb, track, viewport, virtual_container } = createParts(),
-    render_item = getRenderItem(config.render_item);
+    { frame, viewport, slot, thumb, track } = createParts();
+
+  void config;
 
   shadow_root.innerHTML = "";
   shadow_root.append(frame);
 
   const state: VScrollState = {
-      buffer: config.buffer ?? BUFFER_DEFAULT,
-      data: [],
-      item_height: Math.max(1, config.item_height ?? ITEM_HEIGHT_DEFAULT),
       scroll_top: 0,
       thumb_height: 0,
       track_height: 0,
       viewport_height: 0,
-    },
-    item_pool: HTMLDivElement[] = [];
+    };
 
   let drag_state: {
       pointer_id: number;
@@ -80,52 +47,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     body_user_select = "",
     is_destroyed = false;
 
-  const ensureItemPool = (size: number) => {
-    while (item_pool.length < size) {
-      const item = document.createElement("div");
-      item.className = ITEM_CLASS;
-      item.setAttribute("part", "item");
-      item.style.cssText = `position: absolute; inset-inline-start: 0; inline-size: 100%; block-size: ${state.item_height}px;`;
-      item_pool.push(item);
-    }
-  };
-
-  const getVirtualHeight = () =>
-    calcVirtualHeight({
-      item_count: state.data.length,
-      item_height: state.item_height,
-    });
-
-  const renderItems = () => {
-    const { end, start } = calcVisibleRange({
-        buffer: state.buffer,
-        item_count: state.data.length,
-        item_height: state.item_height,
-        scroll_top: state.scroll_top,
-        viewport_height: state.viewport_height,
-      }),
-      visible_count = end - start;
-
-    ensureItemPool(visible_count);
-
-    const next_items = item_pool.slice(0, visible_count).map((item, offset) => {
-      const index = start + offset,
-        data_item = state.data[index];
-
-      item.style.insetBlockStart = `${offset * state.item_height}px`;
-      item.style.blockSize = `${state.item_height}px`;
-      item.textContent = render_item(data_item, index);
-
-      return item;
-    });
-
-    items_container.replaceChildren(...next_items);
-    items_container.style.transform = `translateY(${start * state.item_height}px)`;
-  };
-
-  const syncVirtualHeight = () => {
-    virtual_container.style.height = `${getVirtualHeight()}px`;
-  };
+  const getVirtualHeight = () => viewport.scrollHeight;
 
   const syncScrollbar = () => {
     const virtual_height = getVirtualHeight();
@@ -166,8 +88,6 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
     state.viewport_height = viewport.clientHeight;
     state.scroll_top = viewport.scrollTop;
-    renderItems();
-    syncVirtualHeight();
     syncScrollbar();
 
     return state;
@@ -175,7 +95,6 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
   const handleScroll = () => {
     state.scroll_top = viewport.scrollTop;
-    renderItems();
     syncScrollbar();
   };
 
@@ -258,20 +177,8 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     sync();
   });
 
-  const setData = (data: unknown[]) => {
-    state.data = data;
-    viewport.scrollTop = clamp(viewport.scrollTop, 0, Math.max(0, getVirtualHeight() - state.viewport_height));
+  const handleSlotChange = () => {
     sync();
-  };
-
-  const setItemHeight = (item_height: number) => {
-    state.item_height = Math.max(1, item_height);
-    sync();
-  };
-
-  const scrollToIndex = (index: number) => {
-    viewport.scrollTop = Math.max(0, index * state.item_height);
-    handleScroll();
   };
 
   const destroy = () => {
@@ -288,6 +195,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     thumb.removeEventListener("pointerup", handleThumbPointerUp);
     thumb.removeEventListener("pointercancel", handleThumbPointerUp);
     thumb.removeEventListener("lostpointercapture", handleThumbLostPointerCapture);
+    slot.removeEventListener("slotchange", handleSlotChange);
     resize_observer.disconnect();
 
     if (drag_state) {
@@ -306,13 +214,14 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   thumb.addEventListener("pointerup", handleThumbPointerUp);
   thumb.addEventListener("pointercancel", handleThumbPointerUp);
   thumb.addEventListener("lostpointercapture", handleThumbLostPointerCapture);
+  slot.addEventListener("slotchange", handleSlotChange);
   resize_observer.observe(host);
   resize_observer.observe(viewport);
   host.dataset.dragging = NO;
   host.dataset.scrollable = NO;
   sync();
 
-  return { destroy, scrollToIndex, setData, setItemHeight, state, sync };
+  return { destroy, state, sync };
 };
 
 export const registerVScroll = () => {
@@ -335,18 +244,6 @@ export const registerVScroll = () => {
       disconnectedCallback() {
         this.instance?.destroy();
         this.instance = null;
-      }
-
-      get data() {
-        return this.instance?.state.data ?? [];
-      }
-
-      set data(value: unknown[]) {
-        this.instance?.setData(value);
-      }
-
-      scrollToIndex(index: number) {
-        this.instance?.scrollToIndex(index);
       }
     },
   );
