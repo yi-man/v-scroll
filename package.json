@@ -9,7 +9,7 @@
     "build:lib": "bun run --cwd packages/v-scroll build",
     "build:demo": "test -f packages/v-scroll/dist/index.js && bun run --cwd apps/demo build",
     "build": "bun run build:lib && bun run build:demo",
-    "test:workspace-config": "vitest run tests/workspace-config.test.ts",
+    "test:workspace-config": "vitest run --config vitest.workspace-config.ts tests/workspace-config.test.ts",
     "check": "bun run --cwd packages/v-scroll check && bun run --cwd apps/demo check",
     "test": "bun run test:workspace-config && bun run --cwd packages/v-scroll test && bun run --cwd apps/demo test"
   },

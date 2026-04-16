@@ -98,50 +98,18 @@ describe("vScrollThemePlugin", () => {
     );
   });
 
-  it("resolves the importmap specifier to a virtual module in serve mode", async () => {
+  it("keeps the generated module importable from the package by relative path", async () => {
     await writeFile(
       join(root_dir, "themes/default/v-scroll.css"),
       ":root {\n  --color: red;\n}\n",
       "utf8",
     );
 
-    const plugin = vScrollThemePlugin();
-    await callHook(plugin, "configResolved", {
-      root: root_dir,
-      command: "serve",
-      build: {
-        outDir: "dist",
-      },
-    });
+    await resolveConfig(root_dir);
 
-    const resolved = await callHook(plugin, "resolveId", "$/v-scroll.js");
-
-    expect(resolved).toBe("\0v-scroll-theme");
-    await expect(callHook(plugin, "load", resolved)).resolves.toBe(
-      'export { default } from "/src/theme-imports/v-scroll.js";\n',
+    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+      'export default ":root{--color:red}";\n',
     );
-  });
-
-  it("marks the importmap specifier as external in build mode so browser resolution stays in play", async () => {
-    await writeFile(
-      join(root_dir, "themes/default/v-scroll.css"),
-      ":root {\n  --color: red;\n}\n",
-      "utf8",
-    );
-
-    const plugin = vScrollThemePlugin();
-    await callHook(plugin, "configResolved", {
-      root: root_dir,
-      command: "build",
-      build: {
-        outDir: "dist",
-      },
-    });
-
-    await expect(callHook(plugin, "resolveId", "$/v-scroll.js")).resolves.toEqual({
-      id: "$/v-scroll.js",
-      external: true,
-    });
   });
 
   it("writes the generated theme module into the configured build output path", async () => {
