@@ -41,13 +41,14 @@ export const getThumbOffset = ({
   scroll_top: number;
 }) => {
   const max_scroll_top = getMaxScrollTop(client_size, scroll_size),
-    effective_track = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size);
+    effective_track = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size),
+    safe_scroll_top = clamp(scroll_top, 0, max_scroll_top);
 
   if (max_scroll_top === 0 || effective_track === 0) {
     return 0;
   }
 
-  return Math.round((scroll_top / max_scroll_top) * effective_track);
+  return Math.round((safe_scroll_top / max_scroll_top) * effective_track);
 };
 
 export const getScrollTopFromThumbOffset = ({

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_THUMB_SIZE,
   TRACK_BOTTOM_GAP,
   TRACK_TOP_GAP,
   getScrollTopFromThumbOffset,
@@ -13,6 +14,7 @@ describe("v-scroll math", () => {
   });
 
   it("uses the visible ratio and minimum size for thumb height", () => {
+    expect(getThumbSize({ track_size: 200, client_size: 10, scroll_size: 1000 })).toBe(MIN_THUMB_SIZE);
     expect(getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 })).toBe(19);
     expect(getThumbSize({ track_size: 200, client_size: 300, scroll_size: 600 })).toBe(97);
   });
@@ -31,14 +33,26 @@ describe("v-scroll math", () => {
     ).toBe(77);
   });
 
-  it("maps thumb offset back to scrollTop with track gaps applied", () => {
+  it("clamps scrollTop overshoot to the effective track range", () => {
+    expect(
+      getThumbOffset({
+        track_size: 200,
+        thumb_size: 40,
+        client_size: 300,
+        scroll_size: 900,
+        scroll_top: 900,
+      }),
+    ).toBe(154);
+  });
+
+  it("maps thumb offset back to max scrollTop when the thumb overshoots the track", () => {
     expect(
       getScrollTopFromThumbOffset({
         track_size: 200,
         thumb_size: 40,
         client_size: 300,
         scroll_size: 900,
-        thumb_offset: 154,
+        thumb_offset: 999,
       }),
     ).toBe(600);
   });
