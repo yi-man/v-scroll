@@ -1,5 +1,11 @@
 import grab_icon from "../assets/grab.svg";
-import { getScrollTopFromThumbOffset, getThumbOffset, getThumbSize } from "./v-scroll-math";
+import {
+  TRACK_BOTTOM_GAP,
+  TRACK_TOP_GAP,
+  getScrollTopFromThumbOffset,
+  getThumbOffset,
+  getThumbSize,
+} from "./v-scroll-math";
 
 const ELEMENT_NAME = "v-scroll",
   FRAME_ATTR = "data_v_scroll_frame",
@@ -67,6 +73,7 @@ class VScrollElement extends HTMLElement {
   raf_id: number | null;
   observed_nodes: Set<Element>;
   drag_state: DragState | null;
+  body_user_select: string | null;
 
   constructor() {
     super();
@@ -76,6 +83,7 @@ class VScrollElement extends HTMLElement {
     this.raf_id = null;
     this.observed_nodes = new Set();
     this.drag_state = null;
+    this.body_user_select = null;
   }
 
   ensureParts = () => {
@@ -114,21 +122,24 @@ class VScrollElement extends HTMLElement {
       scroll_size = viewport.scrollHeight,
       scroll_top = viewport.scrollTop,
       thumb_size = getThumbSize({ track_size, client_size, scroll_size }),
-      thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
+      thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top }),
+      max_scroll_top = Math.max(0, scroll_size - client_size),
+      drag_range = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size);
 
-    return { viewport, track, track_size, client_size, scroll_size, scroll_top, thumb_size, thumb_offset };
+    return { viewport, track, track_size, client_size, scroll_size, scroll_top, thumb_size, thumb_offset, max_scroll_top, drag_range };
   };
 
   clearDragState = (pointer_id?: number) => {
     const { thumb } = this.ensureParts();
 
     if (pointer_id !== undefined) {
-      thumb.releasePointerCapture(pointer_id);
+      thumb.releasePointerCapture?.(pointer_id);
     }
 
     this.drag_state = null;
     this.dataset.dragging = NO;
-    document.body.style.userSelect = "";
+    document.body.style.userSelect = this.body_user_select ?? "";
+    this.body_user_select = null;
   };
 
   handleThumbPointerDown = (event: PointerEvent) => {
@@ -137,7 +148,11 @@ class VScrollElement extends HTMLElement {
     }
 
     const { thumb } = this.ensureParts(),
-      { thumb_offset } = this.getLayoutMetrics();
+      { thumb_offset, max_scroll_top, drag_range } = this.getLayoutMetrics();
+
+    if (max_scroll_top === 0 || drag_range === 0) {
+      return;
+    }
 
     thumb.setPointerCapture(event.pointerId);
     this.drag_state = {
@@ -145,6 +160,7 @@ class VScrollElement extends HTMLElement {
       start_client_y: event.clientY,
       start_thumb_offset: thumb_offset,
     };
+    this.body_user_select = document.body.style.userSelect;
     this.dataset.dragging = YES;
     document.body.style.userSelect = "none";
   };
@@ -238,7 +254,7 @@ class VScrollElement extends HTMLElement {
     this.observed_nodes.clear();
 
     if (this.drag_state) {
-      this.clearDragState();
+      this.clearDragState(this.drag_state.pointer_id);
     } else {
       this.dataset.dragging = NO;
     }

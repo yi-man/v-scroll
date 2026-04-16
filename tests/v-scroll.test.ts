@@ -141,22 +141,154 @@ describe("registerVScroll", () => {
     expect(viewport!.scrollTop).toBe(398);
   });
 
+  it("does not start dragging when content does not overflow", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "text";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 3, clientY: 16, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb!.setPointerCapture).not.toHaveBeenCalled();
+    expect(document.body.style.userSelect).toBe("text");
+  });
+
   it("clears dragging state on pointerup", () => {
     registerVScroll();
 
     const host = document.createElement("v-scroll");
     document.body.append(host);
 
-    const thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
 
     thumb!.setPointerCapture = vi.fn();
     thumb!.releasePointerCapture = vi.fn();
 
+    viewport!.dispatchEvent(new Event("scroll"));
     thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 5, clientY: 10, bubbles: true }));
     thumb!.dispatchEvent(new PointerEvent("pointerup", { pointerId: 5, clientY: 10, bubbles: true }));
 
     expect(host.dataset.dragging).toBe("no");
     expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(5);
+  });
+
+  it("restores the previous body user-select value after pointerup", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "text";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+    thumb!.releasePointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 8, clientY: 18, bubbles: true }));
+
+    expect(document.body.style.userSelect).toBe("none");
+
+    thumb!.dispatchEvent(new PointerEvent("pointerup", { pointerId: 8, clientY: 18, bubbles: true }));
+
+    expect(document.body.style.userSelect).toBe("text");
+  });
+
+  it("clears dragging state on pointercancel and restores selection state", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "all";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+    thumb!.releasePointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 9, clientY: 12, bubbles: true }));
+    thumb!.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 9, clientY: 12, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(9);
+    expect(document.body.style.userSelect).toBe("all");
+  });
+
+  it("clears dragging state and restores selection state on disconnect mid-drag", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "contain";
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 11, clientY: 14, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("yes");
+    expect(document.body.style.userSelect).toBe("none");
+
+    host.remove();
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(document.body.style.userSelect).toBe("contain");
   });
 
   it("syncs layout from observed slotted content resizes", async () => {
