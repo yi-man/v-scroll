@@ -9,6 +9,7 @@ const waitForAnimationFrame = async () => {
 describe("registerVScroll", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
+    document.body.style.userSelect = "";
   });
 
   it("registers the custom element once", () => {
@@ -110,6 +111,52 @@ describe("registerVScroll", () => {
     expect(track?.dataset.visible).toBe("yes");
     expect(thumb?.style.blockSize).toBe("58px");
     expect(thumb?.style.transform).toBe("translateY(58px)");
+  });
+
+  it("captures the pointer and maps drag distance into scrollTop", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+    thumb!.setPointerCapture = vi.fn();
+
+    viewport!.dispatchEvent(new Event("scroll"));
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 7, clientY: 20, bubbles: true }));
+    thumb!.dispatchEvent(new PointerEvent("pointermove", { pointerId: 7, clientY: 97, bubbles: true }));
+
+    expect(thumb!.setPointerCapture).toHaveBeenCalledWith(7);
+    expect(host.dataset.dragging).toBe("yes");
+    expect(viewport!.scrollTop).toBe(398);
+  });
+
+  it("clears dragging state on pointerup", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    thumb!.setPointerCapture = vi.fn();
+    thumb!.releasePointerCapture = vi.fn();
+
+    thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 5, clientY: 10, bubbles: true }));
+    thumb!.dispatchEvent(new PointerEvent("pointerup", { pointerId: 5, clientY: 10, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(5);
   });
 
   it("syncs layout from observed slotted content resizes", async () => {

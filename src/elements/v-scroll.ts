@@ -1,5 +1,5 @@
 import grab_icon from "../assets/grab.svg";
-import { getThumbOffset, getThumbSize } from "./v-scroll-math";
+import { getScrollTopFromThumbOffset, getThumbOffset, getThumbSize } from "./v-scroll-math";
 
 const ELEMENT_NAME = "v-scroll",
   FRAME_ATTR = "data_v_scroll_frame",
@@ -17,6 +17,12 @@ type VScrollParts = {
   track: HTMLDivElement;
   thumb: HTMLDivElement;
   grab: HTMLImageElement;
+};
+
+type DragState = {
+  pointer_id: number;
+  start_client_y: number;
+  start_thumb_offset: number;
 };
 
 const createParts = () => {
@@ -60,6 +66,7 @@ class VScrollElement extends HTMLElement {
   resize_observer: ResizeObserver | null;
   raf_id: number | null;
   observed_nodes: Set<Element>;
+  drag_state: DragState | null;
 
   constructor() {
     super();
@@ -68,6 +75,7 @@ class VScrollElement extends HTMLElement {
     this.resize_observer = null;
     this.raf_id = null;
     this.observed_nodes = new Set();
+    this.drag_state = null;
   }
 
   ensureParts = () => {
@@ -80,16 +88,12 @@ class VScrollElement extends HTMLElement {
   };
 
   syncLayout = () => {
-    const { viewport, track, thumb } = this.ensureParts(),
-      track_size = track.clientHeight,
-      client_size = viewport.clientHeight,
-      scroll_size = viewport.scrollHeight,
-      scroll_top = viewport.scrollTop,
-      thumb_size = getThumbSize({ track_size, client_size, scroll_size });
+    const { thumb } = this.ensureParts(),
+      { track_size, client_size, scroll_size, scroll_top, thumb_size } = this.getLayoutMetrics();
 
     if (thumb_size === 0) {
       this.dataset.scrollable = NO;
-      track.dataset.visible = NO;
+      this.ensureParts().track.dataset.visible = NO;
       thumb.style.blockSize = "";
       thumb.style.transform = "";
       return;
@@ -98,9 +102,85 @@ class VScrollElement extends HTMLElement {
     const thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
 
     this.dataset.scrollable = YES;
-    track.dataset.visible = YES;
+    this.ensureParts().track.dataset.visible = YES;
     thumb.style.blockSize = `${thumb_size}px`;
     thumb.style.transform = `translateY(${thumb_offset}px)`;
+  };
+
+  getLayoutMetrics = () => {
+    const { viewport, track } = this.ensureParts(),
+      track_size = track.clientHeight,
+      client_size = viewport.clientHeight,
+      scroll_size = viewport.scrollHeight,
+      scroll_top = viewport.scrollTop,
+      thumb_size = getThumbSize({ track_size, client_size, scroll_size }),
+      thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
+
+    return { viewport, track, track_size, client_size, scroll_size, scroll_top, thumb_size, thumb_offset };
+  };
+
+  clearDragState = (pointer_id?: number) => {
+    const { thumb } = this.ensureParts();
+
+    if (pointer_id !== undefined) {
+      thumb.releasePointerCapture(pointer_id);
+    }
+
+    this.drag_state = null;
+    this.dataset.dragging = NO;
+    document.body.style.userSelect = "";
+  };
+
+  handleThumbPointerDown = (event: PointerEvent) => {
+    if (this.drag_state) {
+      return;
+    }
+
+    const { thumb } = this.ensureParts(),
+      { thumb_offset } = this.getLayoutMetrics();
+
+    thumb.setPointerCapture(event.pointerId);
+    this.drag_state = {
+      pointer_id: event.pointerId,
+      start_client_y: event.clientY,
+      start_thumb_offset: thumb_offset,
+    };
+    this.dataset.dragging = YES;
+    document.body.style.userSelect = "none";
+  };
+
+  handleThumbPointerMove = (event: PointerEvent) => {
+    if (!this.drag_state || event.pointerId !== this.drag_state.pointer_id) {
+      return;
+    }
+
+    const { viewport, track_size, client_size, scroll_size, thumb_size } = this.getLayoutMetrics(),
+      next_offset = this.drag_state.start_thumb_offset + (event.clientY - this.drag_state.start_client_y);
+
+    viewport.scrollTop = getScrollTopFromThumbOffset({
+      track_size,
+      thumb_size,
+      client_size,
+      scroll_size,
+      thumb_offset: next_offset,
+    });
+    this.syncLayout();
+  };
+
+  handleThumbPointerUp = (event: PointerEvent) => {
+    if (!this.drag_state || event.pointerId !== this.drag_state.pointer_id) {
+      return;
+    }
+
+    this.clearDragState(event.pointerId);
+  };
+
+  handleThumbPointerCancel = (event: PointerEvent) => {
+    if (!this.drag_state || event.pointerId !== this.drag_state.pointer_id) {
+      return;
+    }
+
+    this.clearDragState(event.pointerId);
   };
 
   syncObservedContent = () => {
@@ -129,10 +209,14 @@ class VScrollElement extends HTMLElement {
   };
 
   connectedCallback() {
-    const { viewport, slot } = this.ensureParts();
+    const { viewport, slot, thumb } = this.ensureParts();
 
     viewport.addEventListener("scroll", this.syncLayout, { passive: true });
     slot.addEventListener("slotchange", this.syncObservedContent);
+    thumb.addEventListener("pointerdown", this.handleThumbPointerDown);
+    thumb.addEventListener("pointermove", this.handleThumbPointerMove);
+    thumb.addEventListener("pointerup", this.handleThumbPointerUp);
+    thumb.addEventListener("pointercancel", this.handleThumbPointerCancel);
     this.resize_observer = new ResizeObserver(() => this.scheduleSync());
     this.resize_observer.observe(this);
     this.resize_observer.observe(viewport);
@@ -141,14 +225,23 @@ class VScrollElement extends HTMLElement {
   }
 
   disconnectedCallback() {
-    const { viewport, slot } = this.ensureParts();
+    const { viewport, slot, thumb } = this.ensureParts();
 
     viewport.removeEventListener("scroll", this.syncLayout);
     slot.removeEventListener("slotchange", this.syncObservedContent);
+    thumb.removeEventListener("pointerdown", this.handleThumbPointerDown);
+    thumb.removeEventListener("pointermove", this.handleThumbPointerMove);
+    thumb.removeEventListener("pointerup", this.handleThumbPointerUp);
+    thumb.removeEventListener("pointercancel", this.handleThumbPointerCancel);
     this.resize_observer?.disconnect();
     this.resize_observer = null;
     this.observed_nodes.clear();
-    this.dataset.dragging = NO;
+
+    if (this.drag_state) {
+      this.clearDragState();
+    } else {
+      this.dataset.dragging = NO;
+    }
 
     if (this.raf_id !== null) {
       cancelAnimationFrame(this.raf_id);
