@@ -18,21 +18,38 @@ v-scroll {
   &::part(frame) {
     position: relative;
     min-block-size: 320px;
-    padding: 20px;
     overflow: hidden;
     border: 1px solid var(--v-scroll-frame-border);
     background: var(--v-scroll-frame-bg);
   }
 
   &::part(viewport) {
-    block-size: 320px;
-    overflow: auto;
+    block-size: 100%;
+    overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
   &::part(viewport)::-webkit-scrollbar {
     display: none;
+  }
+
+  &::part(virtual-container) {
+    inline-size: 100%;
+  }
+
+  &::part(items-container) {
+    inline-size: 100%;
+  }
+
+  &::part(item) {
+    box-sizing: border-box;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgb(15 23 42 / 8%);
+
+    &:hover {
+      background: rgb(15 23 42 / 4%);
+    }
   }
 
   &::part(track) {
@@ -53,6 +70,7 @@ v-scroll {
     border-radius: var(--v-scroll-thumb-radius);
     background: var(--v-scroll-thumb-bg);
     transition: background-color 160ms ease;
+    cursor: pointer;
   }
 
   &[data-scrollable="yes"]:hover::part(track),
