@@ -1,14 +1,17 @@
 {
-  "name": "v-scroll",
+  "name": "v-scroll-workspace",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "check": "tsc --noEmit",
-    "test": "vitest run"
+    "dev:demo": "bun run --cwd apps/demo dev",
+    "build:lib": "bun run --cwd packages/v-scroll build",
+    "build:demo": "test -f packages/v-scroll/dist/index.js && bun run --cwd apps/demo build",
+    "build": "bun run build:lib && bun run build:demo",
+    "test:workspace-config": "vitest run tests/workspace-config.test.ts",
+    "check": "bun run --cwd packages/v-scroll check && bun run --cwd apps/demo check",
+    "test": "bun run test:workspace-config && bun run --cwd packages/v-scroll test && bun run --cwd apps/demo test"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
