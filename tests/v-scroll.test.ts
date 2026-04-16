@@ -96,6 +96,69 @@ describe("virtual scroll behavior", () => {
     instance.destroy();
   });
 
+  it("shows the scroll cursor icon while hovering the thumb", () => {
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const instance = createVScroll(host, { item_height: 50 }),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement,
+      data = Array.from({ length: 100 }, (_, index) => ({
+        id: index,
+        text: `Item ${index}`,
+      }));
+
+    setLayout({ track, viewport });
+    instance.setData(data);
+    expect(thumb.style.cursor).toContain("url(");
+    expect(thumb.style.cursor).toContain("data:image/svg+xml");
+    expect(thumb.style.cursor).toContain("ns-resize");
+    expect(document.body.style.cursor).toBe("");
+
+    instance.destroy();
+  });
+
+  it("switches to the grab cursor icon during thumb dragging", () => {
+    const host = document.createElement("v-scroll");
+    document.body.style.userSelect = "text";
+    document.body.append(host);
+
+    const instance = createVScroll(host, { item_height: 50 }),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement,
+      data = Array.from({ length: 100 }, (_, index) => ({
+        id: index,
+        text: `Item ${index}`,
+      }));
+
+    setLayout({ track, viewport });
+    thumb.setPointerCapture = vi.fn();
+    thumb.hasPointerCapture = vi.fn(() => true);
+    thumb.releasePointerCapture = vi.fn();
+    instance.setData(data);
+
+    thumb.dispatchEvent(new PointerEvent("pointerenter", { pointerId: 7, clientY: 20, bubbles: true }));
+    thumb.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 7, clientY: 20, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("yes");
+    expect(thumb.style.cursor).toContain("url(");
+    expect(thumb.style.cursor).toContain("data:image/svg+xml");
+    expect(thumb.style.cursor).toContain("grabbing");
+    expect(document.body.style.cursor).toBe("");
+    expect(document.body.style.userSelect).toBe("none");
+
+    thumb.dispatchEvent(new PointerEvent("pointerup", { pointerId: 7, clientY: 20, bubbles: true }));
+
+    expect(host.dataset.dragging).toBe("no");
+    expect(thumb.style.cursor).toContain("url(");
+    expect(document.body.style.cursor).toBe("");
+    expect(document.body.style.userSelect).toBe("text");
+
+    instance.destroy();
+  });
+
   it("cleans up on destroy", () => {
     const host = document.createElement("v-scroll");
     document.body.append(host);

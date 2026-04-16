@@ -1,3 +1,5 @@
+import grab_icon from "../assets/grab.svg";
+import scroll_icon from "../assets/scroll.svg";
 import { createParts } from "./dom";
 import {
   BUFFER_DEFAULT,
@@ -13,6 +15,9 @@ const ELEMENT_NAME = "v-scroll",
   ITEM_CLASS = "v-scroll-item",
   NO = "no",
   YES = "yes";
+
+const SCROLL_CURSOR = `url("${scroll_icon}") 10 10, ns-resize`,
+  GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`;
 
 const getRenderItem = (render_item?: (item: unknown, index: number) => string) =>
   render_item ??
@@ -72,6 +77,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       start_client_y: number;
       start_thumb_offset: number;
     } | null = null,
+    body_user_select = "",
     is_destroyed = false;
 
   const ensureItemPool = (size: number) => {
@@ -135,6 +141,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       host.dataset.scrollable = NO;
       thumb.style.display = "none";
       thumb.style.blockSize = "";
+      thumb.style.cursor = "";
       thumb.style.transform = "";
       return;
     }
@@ -142,6 +149,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     host.dataset.scrollable = YES;
     thumb.style.display = "";
     thumb.style.blockSize = `${state.thumb_height}px`;
+    thumb.style.cursor = drag_state ? GRAB_CURSOR : SCROLL_CURSOR;
     thumb.style.transform = `translateY(${calcThumbOffset({
       scroll_top: state.scroll_top,
       thumb_height: state.thumb_height,
@@ -171,6 +179,14 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     syncScrollbar();
   };
 
+  const clearThumbCursor = () => {
+    thumb.style.cursor = "";
+  };
+
+  const handleThumbPointerEnter = () => {};
+
+  const handleThumbPointerLeave = () => {};
+
   const handleThumbPointerDown = (event: PointerEvent) => {
     if (event.button !== 0 || state.thumb_height === 0) {
       return;
@@ -189,18 +205,22 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     };
 
     thumb.setPointerCapture(event.pointerId);
+    body_user_select = document.body.style.userSelect;
     host.dataset.dragging = YES;
+    thumb.style.cursor = GRAB_CURSOR;
     document.body.style.userSelect = "none";
   };
 
   const clearDrag = (pointer_id?: number) => {
-    if (pointer_id !== undefined && thumb.hasPointerCapture(pointer_id)) {
+    if (pointer_id !== undefined && thumb.hasPointerCapture?.(pointer_id)) {
       thumb.releasePointerCapture(pointer_id);
     }
 
     drag_state = null;
     host.dataset.dragging = NO;
-    document.body.style.userSelect = "";
+    thumb.style.cursor = state.thumb_height > 0 ? SCROLL_CURSOR : "";
+    document.body.style.userSelect = body_user_select;
+    body_user_select = "";
   };
 
   const handleThumbPointerMove = (event: PointerEvent) => {
@@ -224,6 +244,14 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     }
 
     clearDrag(event.pointerId);
+  };
+
+  const handleThumbLostPointerCapture = () => {
+    if (!drag_state) {
+      return;
+    }
+
+    clearDrag();
   };
 
   const resize_observer = new ResizeObserver(() => {
@@ -253,22 +281,31 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
     is_destroyed = true;
     viewport.removeEventListener("scroll", handleScroll);
+    thumb.removeEventListener("pointerenter", handleThumbPointerEnter);
+    thumb.removeEventListener("pointerleave", handleThumbPointerLeave);
     thumb.removeEventListener("pointerdown", handleThumbPointerDown);
     thumb.removeEventListener("pointermove", handleThumbPointerMove);
     thumb.removeEventListener("pointerup", handleThumbPointerUp);
     thumb.removeEventListener("pointercancel", handleThumbPointerUp);
+    thumb.removeEventListener("lostpointercapture", handleThumbLostPointerCapture);
     resize_observer.disconnect();
 
     if (drag_state) {
       clearDrag(drag_state.pointer_id);
     }
+
+    clearThumbCursor();
+    document.body.style.userSelect = body_user_select || document.body.style.userSelect;
   };
 
   viewport.addEventListener("scroll", handleScroll, { passive: true });
+  thumb.addEventListener("pointerenter", handleThumbPointerEnter);
+  thumb.addEventListener("pointerleave", handleThumbPointerLeave);
   thumb.addEventListener("pointerdown", handleThumbPointerDown);
   thumb.addEventListener("pointermove", handleThumbPointerMove);
   thumb.addEventListener("pointerup", handleThumbPointerUp);
   thumb.addEventListener("pointercancel", handleThumbPointerUp);
+  thumb.addEventListener("lostpointercapture", handleThumbLostPointerCapture);
   resize_observer.observe(host);
   resize_observer.observe(viewport);
   host.dataset.dragging = NO;
