@@ -34,6 +34,7 @@
 ### Task 1: Extract and verify pure scrollbar math
 
 **Files:**
+
 - Create: `src/elements/v-scroll-math.ts`
 - Create: `tests/v-scroll-math.test.ts`
 
@@ -52,12 +53,18 @@ import {
 
 describe("v-scroll math", () => {
   it("returns zero thumb size when content does not overflow", () => {
-    expect(getThumbSize({ track_size: 200, client_size: 200, scroll_size: 200 })).toBe(0);
+    expect(
+      getThumbSize({ track_size: 200, client_size: 200, scroll_size: 200 }),
+    ).toBe(0);
   });
 
   it("uses the visible ratio and minimum size for thumb height", () => {
-    expect(getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 })).toBe(19);
-    expect(getThumbSize({ track_size: 200, client_size: 300, scroll_size: 600 })).toBe(97);
+    expect(
+      getThumbSize({ track_size: 200, client_size: 100, scroll_size: 1000 }),
+    ).toBe(19);
+    expect(
+      getThumbSize({ track_size: 200, client_size: 300, scroll_size: 600 }),
+    ).toBe(97);
   });
 
   it("maps scrollTop into the effective track range", () => {
@@ -105,11 +112,14 @@ export const TRACK_TOP_GAP = 3,
   TRACK_BOTTOM_GAP = 3,
   MIN_THUMB_SIZE = 16;
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
-const getUsableTrackSize = (track_size: number) => Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP);
+const getUsableTrackSize = (track_size: number) =>
+  Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP);
 
-const getMaxScrollTop = (client_size: number, scroll_size: number) => Math.max(0, scroll_size - client_size);
+const getMaxScrollTop = (client_size: number, scroll_size: number) =>
+  Math.max(0, scroll_size - client_size);
 
 export const getThumbSize = ({
   track_size,
@@ -144,7 +154,10 @@ export const getThumbOffset = ({
   scroll_top: number;
 }) => {
   const max_scroll_top = getMaxScrollTop(client_size, scroll_size),
-    effective_track = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size);
+    effective_track = Math.max(
+      0,
+      track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size,
+    );
 
   if (max_scroll_top === 0 || effective_track === 0) {
     return 0;
@@ -167,7 +180,10 @@ export const getScrollTopFromThumbOffset = ({
   thumb_offset: number;
 }) => {
   const max_scroll_top = getMaxScrollTop(client_size, scroll_size),
-    effective_track = Math.max(0, track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size),
+    effective_track = Math.max(
+      0,
+      track_size - TRACK_TOP_GAP - TRACK_BOTTOM_GAP - thumb_size,
+    ),
     safe_offset = clamp(thumb_offset, 0, effective_track);
 
   if (max_scroll_top === 0 || effective_track === 0) {
@@ -193,6 +209,7 @@ git commit -m "test: add v-scroll scroll math"
 ### Task 2: Rebuild the shadow DOM shell and state hooks
 
 **Files:**
+
 - Modify: `src/elements/v-scroll.ts`
 - Modify: `tests/v-scroll.test.ts`
 
@@ -222,7 +239,9 @@ describe("registerVScroll", () => {
     document.body.append(host);
 
     const frame = host.shadowRoot?.querySelector('[data_v_scroll_frame="yes"]'),
-      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]'),
+      viewport = host.shadowRoot?.querySelector(
+        '[data_v_scroll_viewport="yes"]',
+      ),
       slot = host.shadowRoot?.querySelector("slot"),
       track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]'),
       thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]'),
@@ -247,7 +266,9 @@ describe("registerVScroll", () => {
     host.remove();
     document.body.append(host);
 
-    expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_frame="yes"]').length).toBe(1);
+    expect(
+      host.shadowRoot?.querySelectorAll('[data_v_scroll_frame="yes"]').length,
+    ).toBe(1);
   });
 });
 ```
@@ -353,6 +374,7 @@ git commit -m "feat: add v-scroll shadow shell"
 ### Task 3: Implement scroll sync, resize-driven visibility, and disconnect cleanup
 
 **Files:**
+
 - Modify: `src/elements/v-scroll.ts`
 - Modify: `tests/setup.ts`
 - Modify: `tests/v-scroll.test.ts`
@@ -366,8 +388,12 @@ it("hides the track when content does not overflow", () => {
   const host = document.createElement("v-scroll");
   document.body.append(host);
 
-  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
-    track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]');
+  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_viewport="yes"]',
+    ),
+    track = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_track="yes"]',
+    );
 
   Object.defineProperties(viewport!, {
     clientHeight: { configurable: true, value: 300 },
@@ -386,9 +412,15 @@ it("sizes and positions the thumb from viewport geometry", () => {
   const host = document.createElement("v-scroll");
   document.body.append(host);
 
-  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
-    track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
-    thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_viewport="yes"]',
+    ),
+    track = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_track="yes"]',
+    ),
+    thumb = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_thumb="yes"]',
+    );
 
   Object.defineProperties(viewport!, {
     clientHeight: { configurable: true, value: 300 },
@@ -396,7 +428,10 @@ it("sizes and positions the thumb from viewport geometry", () => {
     scrollTop: { configurable: true, value: 300, writable: true },
   });
 
-  Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+  Object.defineProperty(track!, "clientHeight", {
+    configurable: true,
+    value: 180,
+  });
 
   viewport!.dispatchEvent(new Event("scroll"));
 
@@ -409,7 +444,10 @@ it("sizes and positions the thumb from viewport geometry", () => {
 it("disconnects resize observers when the element leaves the document", () => {
   registerVScroll();
 
-  const disconnect_spy = vi.spyOn(globalThis.ResizeObserver.prototype, "disconnect");
+  const disconnect_spy = vi.spyOn(
+    globalThis.ResizeObserver.prototype,
+    "disconnect",
+  );
   const host = document.createElement("v-scroll");
 
   document.body.append(host);
@@ -487,7 +525,13 @@ class VScrollElement extends HTMLElement {
       scroll_size = viewport.scrollHeight,
       scroll_top = viewport.scrollTop,
       thumb_size = getThumbSize({ track_size, client_size, scroll_size }),
-      thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
+      thumb_offset = getThumbOffset({
+        track_size,
+        thumb_size,
+        client_size,
+        scroll_size,
+        scroll_top,
+      });
 
     if (thumb_size === 0) {
       this.dataset.scrollable = "no";
@@ -506,7 +550,9 @@ class VScrollElement extends HTMLElement {
   syncObservedContent = () => {
     const { slot } = this.ensureParts();
 
-    this.observed_nodes.forEach((node) => this.resize_observer?.unobserve(node));
+    this.observed_nodes.forEach((node) =>
+      this.resize_observer?.unobserve(node),
+    );
     this.observed_nodes.clear();
 
     slot.assignedElements().forEach((node) => {
@@ -573,6 +619,7 @@ git commit -m "feat: add v-scroll layout sync"
 ### Task 4: Implement pointer capture dragging and drag state visuals
 
 **Files:**
+
 - Modify: `src/elements/v-scroll.ts`
 - Modify: `tests/v-scroll.test.ts`
 
@@ -585,9 +632,15 @@ it("captures the pointer and maps drag distance into scrollTop", () => {
   const host = document.createElement("v-scroll");
   document.body.append(host);
 
-  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
-    track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
-    thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+  const viewport = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_viewport="yes"]',
+    ),
+    track = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_track="yes"]',
+    ),
+    thumb = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_thumb="yes"]',
+    );
 
   Object.defineProperties(viewport!, {
     clientHeight: { configurable: true, value: 300 },
@@ -595,12 +648,27 @@ it("captures the pointer and maps drag distance into scrollTop", () => {
     scrollTop: { configurable: true, value: 0, writable: true },
   });
 
-  Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+  Object.defineProperty(track!, "clientHeight", {
+    configurable: true,
+    value: 180,
+  });
   thumb!.setPointerCapture = vi.fn();
 
   viewport!.dispatchEvent(new Event("scroll"));
-  thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 7, clientY: 20, bubbles: true }));
-  thumb!.dispatchEvent(new PointerEvent("pointermove", { pointerId: 7, clientY: 97, bubbles: true }));
+  thumb!.dispatchEvent(
+    new PointerEvent("pointerdown", {
+      pointerId: 7,
+      clientY: 20,
+      bubbles: true,
+    }),
+  );
+  thumb!.dispatchEvent(
+    new PointerEvent("pointermove", {
+      pointerId: 7,
+      clientY: 97,
+      bubbles: true,
+    }),
+  );
 
   expect(thumb!.setPointerCapture).toHaveBeenCalledWith(7);
   expect(host.dataset.dragging).toBe("yes");
@@ -613,13 +681,23 @@ it("clears dragging state on pointerup", () => {
   const host = document.createElement("v-scroll");
   document.body.append(host);
 
-  const thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+  const thumb = host.shadowRoot?.querySelector<HTMLDivElement>(
+    '[data_v_scroll_thumb="yes"]',
+  );
 
   thumb!.setPointerCapture = vi.fn();
   thumb!.releasePointerCapture = vi.fn();
 
-  thumb!.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 5, clientY: 10, bubbles: true }));
-  thumb!.dispatchEvent(new PointerEvent("pointerup", { pointerId: 5, clientY: 10, bubbles: true }));
+  thumb!.dispatchEvent(
+    new PointerEvent("pointerdown", {
+      pointerId: 5,
+      clientY: 10,
+      bubbles: true,
+    }),
+  );
+  thumb!.dispatchEvent(
+    new PointerEvent("pointerup", { pointerId: 5, clientY: 10, bubbles: true }),
+  );
 
   expect(host.dataset.dragging).toBe("no");
   expect(thumb!.releasePointerCapture).toHaveBeenCalledWith(5);
@@ -689,7 +767,9 @@ class VScrollElement extends HTMLElement {
         client_size: viewport.clientHeight,
         scroll_size: viewport.scrollHeight,
       }),
-      next_offset = this.drag_state.start_thumb_offset + (event.clientY - this.drag_state.start_client_y);
+      next_offset =
+        this.drag_state.start_thumb_offset +
+        (event.clientY - this.drag_state.start_client_y);
 
     viewport.scrollTop = getScrollTopFromThumbOffset({
       track_size: track.clientHeight,
@@ -780,6 +860,7 @@ git commit -m "feat: add v-scroll thumb dragging"
 ### Task 5: Match the single-theme demo and final verification path
 
 **Files:**
+
 - Modify: `themes/default/v-scroll.css`
 - Modify: `src/main.ts`
 - Modify: `tests/v-scroll.test.ts`
@@ -793,9 +874,15 @@ it("exposes data attributes and part hooks for theme styling", () => {
   const host = document.createElement("v-scroll");
   document.body.append(host);
 
-  const track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
-    thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]'),
-    grab = host.shadowRoot?.querySelector<HTMLImageElement>('[data_v_scroll_grab="yes"]');
+  const track = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_track="yes"]',
+    ),
+    thumb = host.shadowRoot?.querySelector<HTMLDivElement>(
+      '[data_v_scroll_thumb="yes"]',
+    ),
+    grab = host.shadowRoot?.querySelector<HTMLImageElement>(
+      '[data_v_scroll_grab="yes"]',
+    );
 
   expect(host.dataset.scrollable).toBe("no");
   expect(track?.dataset.visible ?? "no").toBe("no");
@@ -808,6 +895,7 @@ it("exposes data attributes and part hooks for theme styling", () => {
 
 Run: `./build.sh`  
 Expected:
+
 - `tsc --noEmit` PASS
 - `vitest run` PASS
 - `vite build` PASS
@@ -932,6 +1020,7 @@ renderApp();
 
 Run: `./build.sh`  
 Expected:
+
 - `tsc --noEmit` PASS
 - `vitest run` PASS
 - `vite build` PASS
