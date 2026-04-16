@@ -1,11 +1,14 @@
 import grab_icon from "../assets/grab.svg";
+import { getThumbOffset, getThumbSize } from "./v-scroll-math";
 
 const ELEMENT_NAME = "v-scroll",
   FRAME_ATTR = "data_v_scroll_frame",
   VIEWPORT_ATTR = "data_v_scroll_viewport",
   TRACK_ATTR = "data_v_scroll_track",
   THUMB_ATTR = "data_v_scroll_thumb",
-  GRAB_ATTR = "data_v_scroll_grab";
+  GRAB_ATTR = "data_v_scroll_grab",
+  YES = "yes",
+  NO = "no";
 
 type VScrollParts = {
   frame: HTMLDivElement;
@@ -54,17 +57,103 @@ const createParts = () => {
 class VScrollElement extends HTMLElement {
   shadow_root: ShadowRoot;
   parts: VScrollParts | null;
+  resize_observer: ResizeObserver | null;
+  raf_id: number | null;
+  observed_nodes: Set<Element>;
 
   constructor() {
     super();
     this.shadow_root = this.attachShadow({ mode: "open" });
     this.parts = null;
+    this.resize_observer = null;
+    this.raf_id = null;
+    this.observed_nodes = new Set();
   }
 
-  connectedCallback() {
+  ensureParts = () => {
     if (!this.parts) {
       this.parts = createParts();
       this.shadow_root.append(this.parts.frame);
+    }
+
+    return this.parts;
+  };
+
+  syncLayout = () => {
+    const { viewport, track, thumb } = this.ensureParts(),
+      track_size = track.clientHeight,
+      client_size = viewport.clientHeight,
+      scroll_size = viewport.scrollHeight,
+      scroll_top = viewport.scrollTop,
+      thumb_size = getThumbSize({ track_size, client_size, scroll_size });
+
+    if (thumb_size === 0) {
+      this.dataset.scrollable = NO;
+      track.dataset.visible = NO;
+      thumb.style.blockSize = "";
+      thumb.style.transform = "";
+      return;
+    }
+
+    const thumb_offset = getThumbOffset({ track_size, thumb_size, client_size, scroll_size, scroll_top });
+
+    this.dataset.scrollable = YES;
+    track.dataset.visible = YES;
+    thumb.style.blockSize = `${thumb_size}px`;
+    thumb.style.transform = `translateY(${thumb_offset}px)`;
+  };
+
+  syncObservedContent = () => {
+    const { slot } = this.ensureParts();
+
+    this.observed_nodes.forEach((node) => this.resize_observer?.unobserve(node));
+    this.observed_nodes.clear();
+
+    slot.assignedElements().forEach((node) => {
+      this.resize_observer?.observe(node);
+      this.observed_nodes.add(node);
+    });
+
+    this.scheduleSync();
+  };
+
+  scheduleSync = () => {
+    if (this.raf_id !== null) {
+      cancelAnimationFrame(this.raf_id);
+    }
+
+    this.raf_id = requestAnimationFrame(() => {
+      this.raf_id = null;
+      this.syncLayout();
+    });
+  };
+
+  connectedCallback() {
+    const { viewport, slot } = this.ensureParts();
+
+    viewport.addEventListener("scroll", this.syncLayout, { passive: true });
+    slot.addEventListener("slotchange", this.syncObservedContent);
+    this.resize_observer = new ResizeObserver(() => this.scheduleSync());
+    this.resize_observer.observe(this);
+    this.resize_observer.observe(viewport);
+    this.syncObservedContent();
+    this.dataset.dragging = NO;
+  }
+
+  disconnectedCallback() {
+    const { viewport, slot } = this.ensureParts();
+
+    viewport.removeEventListener("scroll", this.syncLayout);
+    slot.removeEventListener("slotchange", this.syncObservedContent);
+    this.resize_observer?.disconnect();
+    this.resize_observer = null;
+    this.observed_nodes.clear();
+    this.dataset.dragging = NO;
+    document.body.style.userSelect = "";
+
+    if (this.raf_id !== null) {
+      cancelAnimationFrame(this.raf_id);
+      this.raf_id = null;
     }
   }
 }

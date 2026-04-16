@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerVScroll } from "../src/elements/v-scroll";
 
 describe("registerVScroll", () => {
@@ -59,5 +59,63 @@ describe("registerVScroll", () => {
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_track="yes"]').length).toBe(1);
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_thumb="yes"]').length).toBe(1);
     expect(host.shadowRoot?.querySelectorAll('[data_v_scroll_grab="yes"]').length).toBe(1);
+  });
+
+  it("hides the track when content does not overflow", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 300 },
+    });
+
+    viewport!.dispatchEvent(new Event("scroll"));
+
+    expect(host.dataset.scrollable).toBe("no");
+    expect(track?.dataset.visible).toBe("no");
+  });
+
+  it("sizes and positions the thumb from viewport geometry", () => {
+    registerVScroll();
+
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const viewport = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_viewport="yes"]'),
+      track = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_track="yes"]'),
+      thumb = host.shadowRoot?.querySelector<HTMLDivElement>('[data_v_scroll_thumb="yes"]');
+
+    Object.defineProperties(viewport!, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollTop: { configurable: true, value: 300, writable: true },
+    });
+
+    Object.defineProperty(track!, "clientHeight", { configurable: true, value: 180 });
+
+    viewport!.dispatchEvent(new Event("scroll"));
+
+    expect(host.dataset.scrollable).toBe("yes");
+    expect(track?.dataset.visible).toBe("yes");
+    expect(thumb?.style.blockSize).toBe("58px");
+    expect(thumb?.style.transform).toBe("translateY(58px)");
+  });
+
+  it("disconnects resize observers when the element leaves the document", () => {
+    registerVScroll();
+
+    const disconnect_spy = vi.spyOn(globalThis.ResizeObserver.prototype, "disconnect");
+    const host = document.createElement("v-scroll");
+
+    document.body.append(host);
+    host.remove();
+
+    expect(disconnect_spy).toHaveBeenCalled();
   });
 });
