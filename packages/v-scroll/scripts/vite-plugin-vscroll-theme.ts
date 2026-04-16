@@ -3,12 +3,20 @@ import { dirname, join, resolve } from "node:path";
 import { transform } from "lightningcss";
 import type { Plugin } from "vite";
 
-const CSS_SOURCE_PATH = "themes/default/v-scroll.css",
-  GENERATED_MODULE_PATH = "src/theme-imports/v-scroll.js";
+const CSS_SOURCE_PATH_DEFAULT = "themes/default/v-scroll.css",
+  GENERATED_MODULE_PATH_DEFAULT = "themes/default/v-scroll.js";
+
+type VScrollThemePluginOptions = {
+  css_source_path?: string;
+  generated_module_path?: string;
+};
 
 const toThemeModule = (css_text: string) => `export default ${JSON.stringify(css_text)};\n`;
 
-export const vScrollThemePlugin = (): Plugin => {
+export const vScrollThemePlugin = ({
+  css_source_path = CSS_SOURCE_PATH_DEFAULT,
+  generated_module_path: generated_module_relative_path = GENERATED_MODULE_PATH_DEFAULT,
+}: VScrollThemePluginOptions = {}): Plugin => {
   let root_dir = "",
     out_dir = "",
     source_path = "",
@@ -57,9 +65,9 @@ export const vScrollThemePlugin = (): Plugin => {
     async configResolved(config) {
       root_dir = config.root;
       out_dir = resolve(root_dir, config.build?.outDir ?? "dist");
-      source_path = join(root_dir, CSS_SOURCE_PATH);
-      generated_module_path = join(root_dir, GENERATED_MODULE_PATH);
-      built_module_path = join(out_dir, GENERATED_MODULE_PATH);
+      source_path = join(root_dir, css_source_path);
+      generated_module_path = join(root_dir, generated_module_relative_path);
+      built_module_path = join(out_dir, generated_module_relative_path);
 
       await generateThemeModule();
     },

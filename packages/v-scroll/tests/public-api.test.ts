@@ -6,9 +6,9 @@ describe("public api", () => {
     document.head.innerHTML = "";
   });
 
-  it("registers the element and injects the generated default theme", () => {
+  it("registers the element and injects the generated default theme", async () => {
     registerVScroll();
-    const style_node = ensureVScrollTheme();
+    const style_node = await ensureVScrollTheme();
 
     expect(customElements.get("v-scroll")).toBeDefined();
     expect(style_node.dataset.vScrollTheme).toBe("default");

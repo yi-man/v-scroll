@@ -3,7 +3,7 @@ import { createDemoData } from "./demo-data";
 
 const renderApp = () => {
   registerVScroll();
-  ensureVScrollTheme();
+  void ensureVScrollTheme();
 
   const app_root = document.querySelector<HTMLDivElement>("#app");
   if (!app_root) {

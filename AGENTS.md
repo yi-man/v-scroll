@@ -74,6 +74,6 @@
 - 遇到问题优先使用 /systematic-debugging 彻底查明原因，再去解决。解决完之后，一定要验证、跑完所有测试才可以生成完成。
 - 端口号勿随意修改。
 - `customElements` 需要继承 `HTMLElement` 时，可以使用最小范围的类实现原生自定义元素。
-- `src/theme-imports/v-scroll.js` 是由 Vite 插件生成的主题模块，不手动编辑。
+- `themes/default/v-scroll.js` 是由 Vite 插件生成的主题模块，不手动编辑。
 - 主题样式应优先修改 `themes/default/v-scroll.css`，再通过插件生成链路同步产物。
 - 提交前优先执行 `./build.sh`，不要只跑单项命令后直接结束。

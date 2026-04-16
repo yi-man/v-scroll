@@ -20,7 +20,6 @@ describe("vScrollThemePlugin", () => {
   });
 
   it("writes a minified javascript theme module during config resolution", async () => {
-    await mkdir(join(root_dir, "src/theme-imports"), { recursive: true });
     await writeFile(
       join(root_dir, "themes/default/v-scroll.css"),
       "/* c */\n:root {\n  --color: red;\n}\n",
@@ -29,21 +28,20 @@ describe("vScrollThemePlugin", () => {
 
     await resolveConfig(root_dir);
 
-    const generated_code = await readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8");
+    const generated_code = await readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8");
 
     expect(generated_code).toBe('export default ":root{--color:red}";\n');
   });
 
   it("fails closed and removes stale output when the theme source file is missing", async () => {
-    await mkdir(join(root_dir, "src/theme-imports"), { recursive: true });
-    await mkdir(join(root_dir, "dist/src/theme-imports"), { recursive: true });
+    await mkdir(join(root_dir, "dist/themes/default"), { recursive: true });
     await writeFile(
-      join(root_dir, "src/theme-imports/v-scroll.js"),
+      join(root_dir, "themes/default/v-scroll.js"),
       'export default ":root{--stale:true}";\n',
       "utf8",
     );
     await writeFile(
-      join(root_dir, "dist/src/theme-imports/v-scroll.js"),
+      join(root_dir, "dist/themes/default/v-scroll.js"),
       'export default ":root{--stale:true}";\n',
       "utf8",
     );
@@ -51,39 +49,38 @@ describe("vScrollThemePlugin", () => {
     await expect(resolveConfig(root_dir, { build: { outDir: "dist" } })).rejects.toMatchObject({
       code: "ENOENT",
     });
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
-    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
   });
 
   it("fails closed and removes stale output when canonical css is invalid", async () => {
-    await mkdir(join(root_dir, "src/theme-imports"), { recursive: true });
-    await mkdir(join(root_dir, "dist/src/theme-imports"), { recursive: true });
+    await mkdir(join(root_dir, "dist/themes/default"), { recursive: true });
     await writeFile(
-      join(root_dir, "src/theme-imports/v-scroll.js"),
+      join(root_dir, "themes/default/v-scroll.js"),
       'export default ":root{--stale:true}";\n',
       "utf8",
     );
     await writeFile(
-      join(root_dir, "dist/src/theme-imports/v-scroll.js"),
+      join(root_dir, "dist/themes/default/v-scroll.js"),
       'export default ":root{--stale:true}";\n',
       "utf8",
     );
     await writeFile(join(root_dir, "themes/default/v-scroll.css"), "@import ;\n", "utf8");
 
     await expect(resolveConfig(root_dir, { build: { outDir: "dist" } })).rejects.toThrow();
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
-    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
   });
 
-  it("creates the output directory before writing the generated theme module", async () => {
+  it("creates the build output directory before writing the generated theme module", async () => {
     await writeFile(
       join(root_dir, "themes/default/v-scroll.css"),
       "/* c */\n:root {\n  --color: red;\n}\n",
@@ -92,13 +89,22 @@ describe("vScrollThemePlugin", () => {
 
     await resolveConfig(root_dir);
 
-    await expect(access(join(root_dir, "src/theme-imports"))).resolves.toBeUndefined();
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+    const plugin = vScrollThemePlugin();
+    await callHook(plugin, "configResolved", {
+      root: root_dir,
+      build: {
+        outDir: "dist",
+      },
+    });
+    await callHook(plugin, "writeBundle");
+
+    await expect(access(join(root_dir, "dist/themes/default"))).resolves.toBeUndefined();
+    await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:red}";\n',
     );
   });
 
-  it("keeps the generated module importable from the package by relative path", async () => {
+  it("keeps the generated module importable from the package by import map path", async () => {
     await writeFile(
       join(root_dir, "themes/default/v-scroll.css"),
       ":root {\n  --color: red;\n}\n",
@@ -107,7 +113,7 @@ describe("vScrollThemePlugin", () => {
 
     await resolveConfig(root_dir);
 
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:red}";\n',
     );
   });
@@ -128,7 +134,7 @@ describe("vScrollThemePlugin", () => {
     });
     await callHook(plugin, "writeBundle");
 
-    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+    await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:red}";\n',
     );
   });
@@ -168,7 +174,7 @@ describe("vScrollThemePlugin", () => {
 
     expect(add).toHaveBeenCalledWith(source_path);
     expect(send).toHaveBeenCalledWith({ type: "full-reload" });
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:blue}";\n',
     );
   });
@@ -210,10 +216,10 @@ describe("vScrollThemePlugin", () => {
 
     expect(add).toHaveBeenCalledWith(source_path);
     expect(send).toHaveBeenCalledWith({ type: "full-reload" });
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
-    await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+    await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
   });
@@ -255,7 +261,7 @@ describe("vScrollThemePlugin", () => {
 
     expect(add).toHaveBeenCalledWith(source_path);
     expect(send).toHaveBeenCalledWith({ type: "full-reload" });
-    await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).resolves.toBe(
+    await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).resolves.toBe(
       'export default ":root{--color:green}";\n',
     );
   });
@@ -301,10 +307,10 @@ describe("vScrollThemePlugin", () => {
       await expect(handler?.(source_path)).rejects.toThrow();
       expect(add).toHaveBeenCalledWith(source_path);
       expect(send).toHaveBeenCalledWith({ type: "full-reload" });
-      await expect(readFile(join(root_dir, "src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      await expect(readFile(join(root_dir, "themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
         code: "ENOENT",
       });
-      await expect(readFile(join(root_dir, "dist/src/theme-imports/v-scroll.js"), "utf8")).rejects.toMatchObject({
+      await expect(readFile(join(root_dir, "dist/themes/default/v-scroll.js"), "utf8")).rejects.toMatchObject({
         code: "ENOENT",
       });
     }
