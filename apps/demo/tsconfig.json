@@ -1,10 +1,4 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "v-scroll": ["../../packages/v-scroll/src/index.ts"]
-    }
-  },
-  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "vite.resolve-v-scroll.ts"]
 }

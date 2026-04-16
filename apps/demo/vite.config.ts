@@ -1,16 +1,8 @@
-import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import { getVScrollAlias } from "./vite.resolve-v-scroll";
 
-const V_SCROLL_DIST_ENTRY = resolve(
-  __dirname,
-  "../../packages/v-scroll/dist/index.js",
-);
-
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   resolve: {
-    alias: [{ find: "v-scroll", replacement: V_SCROLL_DIST_ENTRY }],
+    alias: getVScrollAlias(command === "serve" ? "serve" : "build"),
   },
-  build: {
-    outDir: "dist",
-  },
-});
+}));
