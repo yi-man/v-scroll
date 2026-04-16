@@ -45,6 +45,18 @@ describe("v-scroll math", () => {
     ).toBe(154);
   });
 
+  it("maps an in-range thumb offset back to proportional scrollTop", () => {
+    expect(
+      getScrollTopFromThumbOffset({
+        track_size: 200,
+        thumb_size: 40,
+        client_size: 300,
+        scroll_size: 900,
+        thumb_offset: 77,
+      }),
+    ).toBe(300);
+  });
+
   it("maps thumb offset back to max scrollTop when the thumb overshoots the track", () => {
     expect(
       getScrollTopFromThumbOffset({
