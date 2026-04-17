@@ -1,9 +1,8 @@
 import { ensureThemeCss } from "./runtime/inject-theme-css";
-import default_theme_css from "../themes/default/v-scroll.js";
+import default_theme_css from "./theme/default/v-scroll.js";
 
 export { createVScroll, registerVScroll } from "./virtual-scroll";
 export type { VScrollConfig, VScrollState } from "./virtual-scroll";
-export * from "./virtual-scroll/math";
 
 const THEME_MODULE_SPECIFIER = "$/v-scroll.js";
 

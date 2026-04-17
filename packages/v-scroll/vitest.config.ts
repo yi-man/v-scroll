@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: [{ find: /^\$\/(.*)$/, replacement: `${resolve(__dirname, "themes/default")}/$1` }],
+    alias: [{ find: /^\$\/(.*)$/, replacement: `${resolve(__dirname, "src/theme/default")}/$1` }],
   },
   test: {
     environment: "happy-dom",

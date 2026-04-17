@@ -297,4 +297,3 @@ export const registerVScroll = () => {
   );
 };
 
-export * from "./math";

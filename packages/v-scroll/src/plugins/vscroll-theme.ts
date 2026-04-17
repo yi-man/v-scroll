@@ -3,9 +3,10 @@ import { basename, dirname, join, resolve } from "node:path";
 import { transform } from "lightningcss";
 import type { Plugin } from "vite";
 
-const CSS_SOURCE_PATH_DEFAULT = "themes/default/v-scroll.css",
-  GENERATED_MODULE_PATH_DEFAULT = "themes/default/v-scroll.js",
+const CSS_SOURCE_PATH_DEFAULT = "src/theme/default/v-scroll.css",
+  GENERATED_MODULE_PATH_DEFAULT = "src/theme/default/v-scroll.js",
   PUBLIC_DIR_PREFIX = "public/",
+  SRC_DIR_PREFIX = "src/",
   THEME_MODULE_FILENAME = "v-scroll.js",
   THEME_MODULE_SPECIFIER = "$/v-scroll.js";
 
@@ -19,7 +20,9 @@ const toThemeModule = (css_text: string) => `export default ${JSON.stringify(css
 const getBuiltModuleRelativePath = (generated_module_path: string) =>
   generated_module_path.startsWith(PUBLIC_DIR_PREFIX)
     ? generated_module_path.slice(PUBLIC_DIR_PREFIX.length)
-    : generated_module_path;
+    : generated_module_path.startsWith(SRC_DIR_PREFIX)
+      ? generated_module_path.slice(SRC_DIR_PREFIX.length)
+      : generated_module_path;
 
 const getPublicModulePath = (generated_module_path: string) => {
   if (!generated_module_path.startsWith(PUBLIC_DIR_PREFIX)) {
