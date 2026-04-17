@@ -37,24 +37,6 @@ v-scroll {
     display: none;
   }
 
-  &::part(virtual-container) {
-    inline-size: 100%;
-  }
-
-  &::part(items-container) {
-    inline-size: 100%;
-  }
-
-  &::part(item) {
-    box-sizing: border-box;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgb(15 23 42 / 8%);
-
-    &:hover {
-      background: rgb(15 23 42 / 4%);
-    }
-  }
-
   &::part(track) {
     position: absolute;
     inset-block: 0;
@@ -75,8 +57,6 @@ v-scroll {
     transition: background-color 160ms ease;
   }
 
-  &[data-scrollable="yes"]:hover::part(track),
-  &[data-scrollable="yes"][data-dragging="yes"]::part(track),
   &[data-scrollable="yes"]::part(track) {
     opacity: 1;
   }
