@@ -1,8 +1,30 @@
-import css_text from "./theme-imports/v-scroll.js";
 import { ensureThemeCss } from "./runtime/inject-theme-css";
+import default_theme_css from "./theme/default/v-scroll.js";
+import {
+  createVScroll,
+  registerVScroll as registerVScrollElement,
+  type VScrollConfig,
+  type VScrollState,
+} from "./virtual-scroll";
 
-export { createVScroll, registerVScroll } from "./virtual-scroll";
-export type { VScrollConfig, VScrollState } from "./virtual-scroll";
-export * from "./virtual-scroll/math";
+export { createVScroll };
+export type { VScrollConfig, VScrollState };
 
-export const ensureVScrollTheme = () => ensureThemeCss(css_text);
+const THEME_MODULE_SPECIFIER = "$/v-scroll.js";
+
+const importThemeCss = async (specifier: string) =>
+  (await import(
+    /* @vite-ignore */
+    specifier
+  ))?.default as string;
+
+const loadThemeCss = async () => {
+  const custom_theme_css = await importThemeCss(THEME_MODULE_SPECIFIER).catch(async () => "");
+  return custom_theme_css ? `${default_theme_css}\n${custom_theme_css}` : default_theme_css;
+};
+
+export const ensureVScrollTheme = async () => ensureThemeCss(await loadThemeCss());
+export const registerVScroll = async () => {
+  registerVScrollElement();
+  await ensureVScrollTheme();
+};

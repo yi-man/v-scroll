@@ -5,7 +5,7 @@
   "type": "module",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev:demo": "bun run --cwd apps/demo dev",
+    "dev:demo": "bun run build:lib && bun run --cwd apps/demo dev",
     "build:lib": "bun run --cwd packages/v-scroll build",
     "build:demo": "test -f packages/v-scroll/dist/index.js && bun run --cwd apps/demo build",
     "build": "bun run build:lib && bun run build:demo",

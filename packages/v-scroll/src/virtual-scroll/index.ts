@@ -1,14 +1,22 @@
 import grab_icon from "../assets/grab.svg";
 import scroll_icon from "../assets/scroll.svg";
 import { createParts } from "./dom";
-import { calcScrollTopFromThumbOffset, calcThumbHeight, calcThumbOffset } from "./math";
+import {
+  TRACK_BOTTOM_GAP,
+  TRACK_TOP_GAP,
+  calcScrollTopFromThumbOffset,
+  calcThumbHeight,
+  calcThumbOffset,
+} from "./math";
 
 const ELEMENT_NAME = "v-scroll",
   NO = "no",
   YES = "yes";
 
 const SCROLL_CURSOR = `url("${scroll_icon}") 10 10, ns-resize`,
-  GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`;
+  GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`,
+  TRACK_TOP_GAP_VAR = "--v-scroll-track-top-gap",
+  TRACK_BOTTOM_GAP_VAR = "--v-scroll-track-bottom-gap";
 
 export type VScrollConfig = {
   item_height?: number;
@@ -45,18 +53,32 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       start_thumb_offset: number;
     } | null = null,
     body_user_select = "",
+    is_thumb_hovered = false,
     is_destroyed = false;
 
   const getVirtualHeight = () => viewport.scrollHeight;
+  const toGap = (value: string, fallback: number) => {
+    const parsed_value = Number.parseFloat(value);
+    return Number.isFinite(parsed_value) && parsed_value >= 0 ? parsed_value : fallback;
+  };
+  const getTrackGaps = () => {
+    const styles = getComputedStyle(host),
+      top_gap = toGap(styles.getPropertyValue(TRACK_TOP_GAP_VAR), TRACK_TOP_GAP),
+      bottom_gap = toGap(styles.getPropertyValue(TRACK_BOTTOM_GAP_VAR), TRACK_BOTTOM_GAP);
+    return { top_gap, bottom_gap };
+  };
 
   const syncScrollbar = () => {
-    const virtual_height = getVirtualHeight();
+    const virtual_height = getVirtualHeight(),
+      { top_gap, bottom_gap } = getTrackGaps();
 
     state.track_height = track.clientHeight;
     state.thumb_height = calcThumbHeight({
       track_height: state.track_height,
       viewport_height: state.viewport_height,
       virtual_height,
+      top_gap,
+      bottom_gap,
     });
 
     if (state.thumb_height === 0) {
@@ -71,13 +93,15 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     host.dataset.scrollable = YES;
     thumb.style.display = "";
     thumb.style.blockSize = `${state.thumb_height}px`;
-    thumb.style.cursor = drag_state ? GRAB_CURSOR : SCROLL_CURSOR;
+    thumb.style.cursor = drag_state ? GRAB_CURSOR : is_thumb_hovered ? SCROLL_CURSOR : "";
     thumb.style.transform = `translateY(${calcThumbOffset({
       scroll_top: state.scroll_top,
       thumb_height: state.thumb_height,
       track_height: state.track_height,
       viewport_height: state.viewport_height,
       virtual_height,
+      top_gap,
+      bottom_gap,
     })}px)`;
   };
 
@@ -102,15 +126,26 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     thumb.style.cursor = "";
   };
 
-  const handleThumbPointerEnter = () => {};
+  const handleThumbPointerEnter = () => {
+    is_thumb_hovered = true;
+    if (!drag_state && state.thumb_height > 0) {
+      thumb.style.cursor = SCROLL_CURSOR;
+    }
+  };
 
-  const handleThumbPointerLeave = () => {};
+  const handleThumbPointerLeave = () => {
+    is_thumb_hovered = false;
+    if (!drag_state) {
+      clearThumbCursor();
+    }
+  };
 
   const handleThumbPointerDown = (event: PointerEvent) => {
     if (event.button !== 0 || state.thumb_height === 0) {
       return;
     }
 
+    const { top_gap, bottom_gap } = getTrackGaps();
     drag_state = {
       pointer_id: event.pointerId,
       start_client_y: event.clientY,
@@ -120,6 +155,8 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
         track_height: state.track_height,
         viewport_height: state.viewport_height,
         virtual_height: getVirtualHeight(),
+        top_gap,
+        bottom_gap,
       }),
     };
 
@@ -137,7 +174,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
     drag_state = null;
     host.dataset.dragging = NO;
-    thumb.style.cursor = state.thumb_height > 0 ? SCROLL_CURSOR : "";
+    thumb.style.cursor = state.thumb_height > 0 && is_thumb_hovered ? SCROLL_CURSOR : "";
     document.body.style.userSelect = body_user_select;
     body_user_select = "";
   };
@@ -147,12 +184,15 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       return;
     }
 
+    const { top_gap, bottom_gap } = getTrackGaps();
     viewport.scrollTop = calcScrollTopFromThumbOffset({
       thumb_height: state.thumb_height,
       thumb_offset: drag_state.start_thumb_offset + (event.clientY - drag_state.start_client_y),
       track_height: state.track_height,
       viewport_height: state.viewport_height,
       virtual_height: getVirtualHeight(),
+      top_gap,
+      bottom_gap,
     });
     handleScroll();
   };
@@ -267,5 +307,3 @@ export const registerVScroll = () => {
     },
   );
 };
-
-export * from "./math";

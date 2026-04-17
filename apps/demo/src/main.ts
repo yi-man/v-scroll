@@ -1,10 +1,8 @@
-import { ensureVScrollTheme, registerVScroll } from "v-scroll";
+import { registerVScroll } from "v-scroll";
 import { createDemoData } from "./demo-data";
+import "./demo.css";
 
 const renderApp = () => {
-  registerVScroll();
-  ensureVScrollTheme();
-
   const app_root = document.querySelector<HTMLDivElement>("#app");
   if (!app_root) {
     throw new Error("Expected #app root node");
@@ -17,18 +15,15 @@ const renderApp = () => {
     desc = document.createElement("p"),
     vscroll = document.createElement("v-scroll");
 
-  container.style.cssText =
-    "max-width: 600px; margin: 0 auto; padding: 40px 20px;";
+  container.className = "demo_container";
 
   title.textContent = "Virtual Scroll Demo";
-  title.style.cssText =
-    "font-size: 28px; font-weight: 600; margin: 0 0 24px 0; color: #1a1a1a;";
+  title.className = "demo_title";
 
   desc.textContent = "Custom scrollbar demo: native overflow + slotted content";
-  desc.style.cssText =
-    "font-size: 14px; color: #666; margin: 0 0 24px 0; line-height: 1.5;";
+  desc.className = "demo_desc";
 
-  vscroll.style.cssText = "block-size: 400px;";
+  vscroll.className = "demo_vscroll";
 
   container.append(title, desc, vscroll);
   app_root.append(container);
@@ -36,10 +31,16 @@ const renderApp = () => {
   const data = createDemoData();
   for (const item of data) {
     const el = document.createElement("div");
-    el.setAttribute("part", "item");
+    el.setAttribute("part", "v-scroll-item");
+    el.className = "demo_item";
     el.textContent = item.title;
     vscroll.append(el);
   }
 };
 
-renderApp();
+const bootstrap = async () => {
+  await registerVScroll();
+  renderApp();
+};
+
+void bootstrap();

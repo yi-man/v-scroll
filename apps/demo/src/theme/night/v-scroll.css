@@ -1,0 +1,71 @@
+:root {
+  --v-scroll-frame-bg: #0b1220;
+  --v-scroll-frame-border: #94a3b833;
+  --v-scroll-text: #e2e8f0;
+  --v-scroll-track-width: 10px;
+  --v-scroll-track-inset: 3px;
+  --v-scroll-track-top-gap: 3px;
+  --v-scroll-track-bottom-gap: 3px;
+  --v-scroll-thumb-radius: 999px;
+  --v-scroll-thumb-bg: #93c5fd66;
+  --v-scroll-thumb-bg-hover: #93c5fdaa;
+  --v-scroll-thumb-bg-dragging: #60a5fa;
+  --v-scroll-thumb-min-size: 16px;
+}
+
+/* v-scroll {
+  color: var(--v-scroll-text);
+  display: block;
+
+  &::part(frame) {
+    border: 1px solid var(--v-scroll-frame-border);
+    background: linear-gradient(180deg, #0b1220, #111827);
+    block-size: 100%;
+    min-block-size: 320px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  &::part(viewport) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    block-size: 100%;
+    overflow-y: auto;
+  }
+
+  &::part(viewport)::-webkit-scrollbar {
+    display: none;
+  }
+
+  &::part(track) {
+    inline-size: var(--v-scroll-track-width);
+    opacity: 0;
+    border-radius: 999px;
+    transition: opacity 160ms ease;
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: var(--v-scroll-track-inset);
+  }
+
+  &::part(thumb) {
+    inline-size: 100%;
+    min-block-size: var(--v-scroll-thumb-min-size);
+    border-radius: var(--v-scroll-thumb-radius);
+    background: var(--v-scroll-thumb-bg);
+    place-items: center;
+    transition: background-color 160ms ease;
+    display: grid;
+  }
+
+  &[data-scrollable="yes"]::part(track) {
+    opacity: 1;
+  }
+
+  &:hover::part(thumb) {
+    background: var(--v-scroll-thumb-bg-hover);
+  }
+
+  &[data-dragging="yes"]::part(thumb) {
+    background: var(--v-scroll-thumb-bg-dragging);
+  }
+} */

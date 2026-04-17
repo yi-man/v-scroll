@@ -15,7 +15,9 @@ describe("workspace orchestration", () => {
 
     expect(pkg.private).toBe(true);
     expect(pkg.workspaces).toEqual(["apps/*", "packages/*"]);
-    expect(pkg.scripts["dev:demo"]).toBe("bun run --cwd apps/demo dev");
+    expect(pkg.scripts["dev:demo"]).toBe(
+      "bun run build:lib && bun run --cwd apps/demo dev",
+    );
     expect(pkg.scripts["build:lib"]).toBe("bun run --cwd packages/v-scroll build");
     expect(pkg.scripts["build:demo"]).toBe(
       "test -f packages/v-scroll/dist/index.js && bun run --cwd apps/demo build",

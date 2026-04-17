@@ -1,8 +1,21 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import { getVScrollAlias } from "./vite.resolve-v-scroll";
+import { vScrollThemePlugin } from "v-scroll/plugin";
 
-export default defineConfig(({ command }) => ({
-  resolve: {
-    alias: getVScrollAlias(command === "serve" ? "serve" : "build"),
-  },
-}));
+const CONFIG_DIR = dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig(() => {
+  return {
+    root: CONFIG_DIR,
+    plugins: [
+      vScrollThemePlugin({
+        css_source_path: "src/theme/night/v-scroll.css",
+        generated_module_path: "public/themes/night/v-scroll.js",
+      }),
+    ],
+    resolve: {
+      alias: [],
+    },
+  };
+});
