@@ -55,4 +55,12 @@ describe("package structure", () => {
     expect(default_theme_css).not.toContain("cursor: pointer;");
     expect(demo_theme_css).not.toContain("cursor: pointer;");
   });
+
+  it("drives thumb hover theme state from explicit runtime data instead of host hover selectors", async () => {
+    const default_theme_path = join(import.meta.dirname, "..", "src/theme/default/v-scroll.css"),
+      default_theme_css = await readFile(default_theme_path, "utf8");
+
+    expect(default_theme_css).toContain('&[data-thumb-hovered="yes"]::part(thumb)');
+    expect(default_theme_css).not.toContain("&:hover::part(thumb)");
+  });
 });

@@ -134,6 +134,7 @@ describe("virtual scroll behavior", () => {
     instance.sync();
 
     expect(thumb.style.cursor).toBe("");
+    expect(host.dataset.thumbHovered).toBe("no");
 
     thumb.dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
 
@@ -141,10 +142,12 @@ describe("virtual scroll behavior", () => {
     expect(thumb.style.cursor).toContain("data:image/svg+xml");
     expect(thumb.style.cursor).toContain("ns-resize");
     expect(document.body.style.cursor).toBe("");
+    expect(host.dataset.thumbHovered).toBe("yes");
 
     thumb.dispatchEvent(new PointerEvent("pointerleave", { bubbles: true }));
 
     expect(thumb.style.cursor).toBe("");
+    expect(host.dataset.thumbHovered).toBe("no");
     instance.destroy();
   });
 
@@ -271,6 +274,25 @@ describe("virtual scroll behavior", () => {
         bottom_gap,
       }),
     );
+
+    instance.destroy();
+  });
+
+  it("reads thumb minimum size from css variables", () => {
+    const host = document.createElement("v-scroll");
+    host.style.setProperty("--v-scroll-thumb-min-size", "24px");
+    document.body.append(host);
+
+    const instance = createVScroll(host, { item_height: 50 }),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement,
+      thumb = host.shadowRoot?.querySelector('[data_v_scroll_thumb="yes"]') as HTMLElement;
+
+    setLayout({ track, viewport, track_height: 200, viewport_height: 10, virtual_height: 1000 });
+    instance.sync();
+
+    expect(instance.state.thumb_height).toBe(24);
+    expect(thumb.style.blockSize).toBe("24px");
 
     instance.destroy();
   });

@@ -61,7 +61,7 @@ v-scroll {
     opacity: 1;
   }
 
-  &:hover::part(thumb) {
+  &[data-thumb-hovered="yes"]::part(thumb) {
     background: var(--v-scroll-thumb-bg-hover);
   }
 

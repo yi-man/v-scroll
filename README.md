@@ -111,6 +111,23 @@ export default defineConfig({
 - `generated_module_path`：插件输出的主题 JS（必须文件名为 `v-scroll.js`）
 - 若输出在 `public/...` 下，插件会自动在 HTML 的 `head` 注入 `importmap`，把 `$/v-scroll.js` 指向该文件
 
+主题 CSS 支持的完整变量如下：
+
+| 变量名 | 作用 |
+| --- | --- |
+| `--v-scroll-frame-bg` | 整个滚动容器外框的背景色，作用于 `::part(frame)` |
+| `--v-scroll-frame-border` | 滚动容器边框颜色，作用于 `::part(frame)` |
+| `--v-scroll-text` | 组件文字主色，作用于宿主 `v-scroll` |
+| `--v-scroll-track-width` | 轨道宽度，作用于 `::part(track)` |
+| `--v-scroll-track-inset` | 轨道距离右侧的内缩距离，作用于 `::part(track)` |
+| `--v-scroll-track-top-gap` | 轨道顶部预留间距，参与 thumb 定位和拖拽映射计算 |
+| `--v-scroll-track-bottom-gap` | 轨道底部预留间距，参与 thumb 定位和拖拽映射计算 |
+| `--v-scroll-thumb-radius` | 滑块圆角，作用于 `::part(thumb)` |
+| `--v-scroll-thumb-bg` | 滑块默认背景色，作用于 `::part(thumb)` |
+| `--v-scroll-thumb-bg-hover` | 滑块 hover 状态背景色，作用于 `v-scroll[data-thumb-hovered="yes"]::part(thumb)` |
+| `--v-scroll-thumb-bg-dragging` | 滑块拖拽状态背景色，作用于 `v-scroll[data-dragging="yes"]::part(thumb)` |
+| `--v-scroll-thumb-min-size` | 滑块最小高度，既作用于 `::part(thumb)`，也同步参与运行时尺寸计算 |
+
 `registerVScroll()` 在运行时会先注入内置默认主题，再叠加你的自定义主题。  
 因此主题 CSS 可以按需选择粒度：
 
@@ -141,6 +158,21 @@ v-scroll {
   }
 }
 ```
+
+### 当前实现说明
+
+当前实现保留了两条与最初 PRD 不完全相同、但更偏工程稳态的设计选择：
+
+- **主题加载采用“内置默认主题 + 自定义主题覆盖”**
+  - 好处是自定义主题只需要覆盖自己关心的变量或规则，不必从零写完整主题。
+  - 好处是当自定义主题缺少某些选择器或变量时，组件仍然有一套完整可用的基础样式，不会直接退化成无样式状态。
+  - 好处是升级库时默认主题仍然可以提供新的基础兼容样式，第三方主题只需要增量适配。
+
+- **`importmap` 采用精确映射 `$/v-scroll.js`，而不是整个 `$/` 前缀映射**
+  - 好处是使用方不需要在 HTML 里手动写 `importmap`，只要接入 `vScrollThemePlugin`，插件就会自动注入这条映射。
+  - 好处是运行时入口固定为 `$/v-scroll.js`，主题文件路径可以稳定收敛到单一模块入口，调用方不需要理解一整套目录约定。
+  - 好处是插件职责更单一，只生成并映射一个主题模块，构建、调试和测试边界都更清晰。
+  - 好处是减少路径歧义和误映射风险，避免其他 `$/...` 资源意外落入这个主题机制。
 
 ## 开发建议
 

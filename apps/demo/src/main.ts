@@ -20,7 +20,7 @@ const renderApp = () => {
   title.textContent = "Virtual Scroll Demo";
   title.className = "demo_title";
 
-  desc.textContent = "Custom scrollbar demo: native overflow + slotted content";
+  desc.textContent = "默认为白色主题，demo中编写了黑色主题";
   desc.className = "demo_desc";
 
   vscroll.className = "demo_vscroll";

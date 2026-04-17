@@ -2,6 +2,7 @@ import grab_icon from "../assets/grab.svg";
 import scroll_icon from "../assets/scroll.svg";
 import { createParts } from "./dom";
 import {
+  THUMB_MIN_SIZE,
   TRACK_BOTTOM_GAP,
   TRACK_TOP_GAP,
   calcScrollTopFromThumbOffset,
@@ -16,7 +17,8 @@ const ELEMENT_NAME = "v-scroll",
 const SCROLL_CURSOR = `url("${scroll_icon}") 10 10, ns-resize`,
   GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`,
   TRACK_TOP_GAP_VAR = "--v-scroll-track-top-gap",
-  TRACK_BOTTOM_GAP_VAR = "--v-scroll-track-bottom-gap";
+  TRACK_BOTTOM_GAP_VAR = "--v-scroll-track-bottom-gap",
+  THUMB_MIN_SIZE_VAR = "--v-scroll-thumb-min-size";
 
 export type VScrollConfig = {
   item_height?: number;
@@ -57,16 +59,18 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     is_destroyed = false;
 
   const getVirtualHeight = () => viewport.scrollHeight;
-  const toGap = (value: string, fallback: number) => {
+  const toCssNumber = (value: string, fallback: number) => {
     const parsed_value = Number.parseFloat(value);
     return Number.isFinite(parsed_value) && parsed_value >= 0 ? parsed_value : fallback;
   };
   const getTrackGaps = () => {
     const styles = getComputedStyle(host),
-      top_gap = toGap(styles.getPropertyValue(TRACK_TOP_GAP_VAR), TRACK_TOP_GAP),
-      bottom_gap = toGap(styles.getPropertyValue(TRACK_BOTTOM_GAP_VAR), TRACK_BOTTOM_GAP);
+      top_gap = toCssNumber(styles.getPropertyValue(TRACK_TOP_GAP_VAR), TRACK_TOP_GAP),
+      bottom_gap = toCssNumber(styles.getPropertyValue(TRACK_BOTTOM_GAP_VAR), TRACK_BOTTOM_GAP);
     return { top_gap, bottom_gap };
   };
+  const getThumbMinSize = () =>
+    toCssNumber(getComputedStyle(host).getPropertyValue(THUMB_MIN_SIZE_VAR), THUMB_MIN_SIZE);
 
   const syncScrollbar = () => {
     const virtual_height = getVirtualHeight(),
@@ -77,6 +81,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       track_height: state.track_height,
       viewport_height: state.viewport_height,
       virtual_height,
+      min_size: getThumbMinSize(),
       top_gap,
       bottom_gap,
     });
@@ -128,6 +133,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
   const handleThumbPointerEnter = () => {
     is_thumb_hovered = true;
+    host.dataset.thumbHovered = YES;
     if (!drag_state && state.thumb_height > 0) {
       thumb.style.cursor = SCROLL_CURSOR;
     }
@@ -135,6 +141,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
   const handleThumbPointerLeave = () => {
     is_thumb_hovered = false;
+    host.dataset.thumbHovered = NO;
     if (!drag_state) {
       clearThumbCursor();
     }
@@ -278,6 +285,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   updateContentObservers();
   host.dataset.dragging = NO;
   host.dataset.scrollable = NO;
+  host.dataset.thumbHovered = NO;
   sync();
 
   return { destroy, state, sync };
