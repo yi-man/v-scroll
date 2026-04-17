@@ -8,7 +8,6 @@ const CONFIG_DIR = dirname(fileURLToPath(import.meta.url));
 export default defineConfig(async ({ command }) => {
   const mode = command === "serve" ? "serve" : "build",
     { alias, create_theme_plugin } = await resolveVScrollSetup({
-      config_dir: CONFIG_DIR,
       command: mode,
     });
 
