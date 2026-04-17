@@ -18,7 +18,10 @@ const importThemeCss = async (specifier: string) =>
     specifier
   ))?.default as string;
 
-const loadThemeCss = async () => await importThemeCss(THEME_MODULE_SPECIFIER).catch(async () => default_theme_css);
+const loadThemeCss = async () => {
+  const custom_theme_css = await importThemeCss(THEME_MODULE_SPECIFIER).catch(async () => "");
+  return custom_theme_css ? `${default_theme_css}\n${custom_theme_css}` : default_theme_css;
+};
 
 export const ensureVScrollTheme = async () => ensureThemeCss(await loadThemeCss());
 export const registerVScroll = async () => {

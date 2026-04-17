@@ -13,7 +13,7 @@
   --v-scroll-thumb-min-size: 16px;
 }
 
-v-scroll {
+/* v-scroll {
   color: var(--v-scroll-text);
   display: block;
 
@@ -68,4 +68,4 @@ v-scroll {
   &[data-dragging="yes"]::part(thumb) {
     background: var(--v-scroll-thumb-bg-dragging);
   }
-}
+} */
