@@ -1,10 +1,7 @@
-import { ensureVScrollTheme, registerVScroll } from "v-scroll";
+import { registerVScroll } from "v-scroll";
 import { createDemoData } from "./demo-data";
 
 const renderApp = () => {
-  registerVScroll();
-  void ensureVScrollTheme();
-
   const app_root = document.querySelector<HTMLDivElement>("#app");
   if (!app_root) {
     throw new Error("Expected #app root node");
@@ -42,4 +39,9 @@ const renderApp = () => {
   }
 };
 
-renderApp();
+const bootstrap = async () => {
+  await registerVScroll();
+  renderApp();
+};
+
+void bootstrap();
