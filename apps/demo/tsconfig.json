@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "v-scroll": ["../../packages/v-scroll/src/index.ts"]
+      "v-scroll": ["../../packages/v-scroll/src/index.ts"],
+      "v-scroll/plugin": ["../../packages/v-scroll/src/plugin.ts"]
     }
   },
   "include": ["src", "tests", "vite.config.ts", "vite.resolve-v-scroll.ts"]
