@@ -32,6 +32,7 @@ const renderApp = () => {
   for (const item of data) {
     const el = document.createElement("div");
     el.setAttribute("part", "v-scroll-item");
+    el.className = "demo_item";
     el.textContent = item.title;
     vscroll.append(el);
   }
