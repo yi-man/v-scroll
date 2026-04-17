@@ -16,6 +16,8 @@ const ELEMENT_NAME = "v-scroll",
 
 const SCROLL_CURSOR = `url("${scroll_icon}") 10 10, ns-resize`,
   GRAB_CURSOR = `url("${grab_icon}") 7 7, grabbing`,
+  SCROLLING_IDLE_MS = 400,
+  TRACK_HOVER_PADDING = 4,
   TRACK_TOP_GAP_VAR = "--v-scroll-track-top-gap",
   TRACK_BOTTOM_GAP_VAR = "--v-scroll-track-bottom-gap",
   THUMB_MIN_SIZE_VAR = "--v-scroll-thumb-min-size";
@@ -54,6 +56,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       start_client_y: number;
       start_thumb_offset: number;
     } | null = null,
+    scrolling_timeout: ReturnType<typeof setTimeout> | null = null,
     body_user_select = "",
     is_thumb_hovered = false,
     is_destroyed = false;
@@ -71,6 +74,35 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   };
   const getThumbMinSize = () =>
     toCssNumber(getComputedStyle(host).getPropertyValue(THUMB_MIN_SIZE_VAR), THUMB_MIN_SIZE);
+  const getTrackHoverZoneWidth = () => {
+    const styles = getComputedStyle(host),
+      track_width = toCssNumber(styles.getPropertyValue("--v-scroll-track-width"), 10),
+      track_inset = toCssNumber(styles.getPropertyValue("--v-scroll-track-inset"), 3);
+    return track_width + track_inset + TRACK_HOVER_PADDING;
+  };
+
+  const clearScrollingTimeout = () => {
+    if (!scrolling_timeout) {
+      return;
+    }
+    clearTimeout(scrolling_timeout);
+    scrolling_timeout = null;
+  };
+
+  const markScrolling = () => {
+    if (state.thumb_height === 0) {
+      return;
+    }
+    host.dataset.scrolling = YES;
+    clearScrollingTimeout();
+    scrolling_timeout = setTimeout(() => {
+      if (is_destroyed) {
+        return;
+      }
+      host.dataset.scrolling = NO;
+      scrolling_timeout = null;
+    }, SCROLLING_IDLE_MS);
+  };
 
   const syncScrollbar = () => {
     const virtual_height = getVirtualHeight(),
@@ -88,6 +120,8 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
     if (state.thumb_height === 0) {
       host.dataset.scrollable = NO;
+      host.dataset.scrolling = NO;
+      clearScrollingTimeout();
       thumb.style.display = "none";
       thumb.style.blockSize = "";
       thumb.style.cursor = "";
@@ -124,6 +158,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
   const handleScroll = () => {
     state.scroll_top = viewport.scrollTop;
+    markScrolling();
     syncScrollbar();
   };
 
@@ -145,6 +180,23 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     if (!drag_state) {
       clearThumbCursor();
     }
+  };
+
+  const updateTrackHoverState = (client_x: number) => {
+    if (state.thumb_height === 0) {
+      host.dataset.trackHovered = NO;
+      return;
+    }
+    const host_rect = host.getBoundingClientRect(),
+      zone_width = getTrackHoverZoneWidth(),
+      zone_start = host_rect.right - zone_width;
+    host.dataset.trackHovered = client_x >= zone_start && client_x <= host_rect.right ? YES : NO;
+  };
+  const handleHostPointerMove = (event: PointerEvent) => {
+    updateTrackHoverState(event.clientX);
+  };
+  const handleHostPointerLeave = () => {
+    host.dataset.trackHovered = NO;
   };
 
   const handleThumbPointerDown = (event: PointerEvent) => {
@@ -259,9 +311,12 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     thumb.removeEventListener("pointerup", handleThumbPointerUp);
     thumb.removeEventListener("pointercancel", handleThumbPointerUp);
     thumb.removeEventListener("lostpointercapture", handleThumbLostPointerCapture);
+    host.removeEventListener("pointermove", handleHostPointerMove);
+    host.removeEventListener("pointerleave", handleHostPointerLeave);
     slot.removeEventListener("slotchange", handleSlotChange);
     resize_observer.disconnect();
     observed_content_nodes.clear();
+    clearScrollingTimeout();
 
     if (drag_state) {
       clearDrag(drag_state.pointer_id);
@@ -279,12 +334,16 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
   thumb.addEventListener("pointerup", handleThumbPointerUp);
   thumb.addEventListener("pointercancel", handleThumbPointerUp);
   thumb.addEventListener("lostpointercapture", handleThumbLostPointerCapture);
+  host.addEventListener("pointermove", handleHostPointerMove, { passive: true });
+  host.addEventListener("pointerleave", handleHostPointerLeave);
   slot.addEventListener("slotchange", handleSlotChange);
   resize_observer.observe(host);
   resize_observer.observe(viewport);
   updateContentObservers();
   host.dataset.dragging = NO;
   host.dataset.scrollable = NO;
+  host.dataset.scrolling = NO;
+  host.dataset.trackHovered = NO;
   host.dataset.thumbHovered = NO;
   sync();
 

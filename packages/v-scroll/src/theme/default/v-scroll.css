@@ -44,7 +44,8 @@ v-scroll {
     inline-size: var(--v-scroll-track-width);
     border-radius: 999px;
     opacity: 0;
-    transition: opacity 160ms ease;
+    pointer-events: none;
+    transition: opacity 160ms ease 240ms;
   }
 
   &::part(thumb) {
@@ -54,11 +55,15 @@ v-scroll {
     min-block-size: var(--v-scroll-thumb-min-size);
     border-radius: var(--v-scroll-thumb-radius);
     background: var(--v-scroll-thumb-bg);
+    pointer-events: auto;
     transition: background-color 160ms ease;
   }
 
-  &[data-scrollable="yes"]::part(track) {
+  &[data-scrollable="yes"][data-track-hovered="yes"]::part(track),
+  &[data-scrollable="yes"][data-scrolling="yes"]::part(track),
+  &[data-scrollable="yes"][data-dragging="yes"]::part(track) {
     opacity: 1;
+    transition-delay: 0ms;
   }
 
   &[data-thumb-hovered="yes"]::part(thumb) {

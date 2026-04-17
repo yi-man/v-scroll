@@ -56,11 +56,24 @@ describe("package structure", () => {
     expect(demo_theme_css).not.toContain("cursor: pointer;");
   });
 
-  it("drives thumb hover theme state from explicit runtime data instead of host hover selectors", async () => {
+  it("uses host hover and drag state to control track visibility", async () => {
     const default_theme_path = join(import.meta.dirname, "..", "src/theme/default/v-scroll.css"),
       default_theme_css = await readFile(default_theme_path, "utf8");
 
-    expect(default_theme_css).toContain('&[data-thumb-hovered="yes"]::part(thumb)');
-    expect(default_theme_css).not.toContain("&:hover::part(thumb)");
+    expect(default_theme_css).toContain('&[data-scrollable="yes"][data-track-hovered="yes"]::part(track)');
+    expect(default_theme_css).toContain('&[data-scrollable="yes"][data-scrolling="yes"]::part(track)');
+    expect(default_theme_css).toContain('&[data-scrollable="yes"][data-dragging="yes"]::part(track)');
+    expect(default_theme_css).toContain("transition: opacity 160ms ease 240ms;");
+    expect(default_theme_css).toContain("transition-delay: 0ms;");
+  });
+
+  it("keeps track hit-testing disabled while thumb remains interactive", async () => {
+    const default_theme_path = join(import.meta.dirname, "..", "src/theme/default/v-scroll.css"),
+      default_theme_css = await readFile(default_theme_path, "utf8");
+
+    expect(default_theme_css).toContain("&::part(track) {");
+    expect(default_theme_css).toContain("pointer-events: none;");
+    expect(default_theme_css).toContain("&::part(thumb) {");
+    expect(default_theme_css).toContain("pointer-events: auto;");
   });
 });

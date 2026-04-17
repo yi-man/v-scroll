@@ -103,6 +103,71 @@ describe("virtual scroll behavior", () => {
     instance.destroy();
   });
 
+  it("marks scrolling state during scroll and clears it after delay", () => {
+    vi.useFakeTimers();
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const instance = createVScroll(host),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement;
+
+    setLayout({ track, viewport, virtual_height: 5000, viewport_height: 400 });
+    instance.sync();
+    expect(host.dataset.scrolling).toBe("no");
+
+    viewport.scrollTop = 200;
+    viewport.dispatchEvent(new Event("scroll"));
+    expect(host.dataset.scrolling).toBe("yes");
+
+    vi.advanceTimersByTime(399);
+    expect(host.dataset.scrolling).toBe("yes");
+    vi.advanceTimersByTime(1);
+    expect(host.dataset.scrolling).toBe("no");
+
+    instance.destroy();
+    vi.useRealTimers();
+  });
+
+  it("toggles track hover state only near the right edge hot zone", () => {
+    const host = document.createElement("v-scroll");
+    document.body.append(host);
+
+    const instance = createVScroll(host),
+      viewport = host.shadowRoot?.querySelector('[data_v_scroll_viewport="yes"]') as HTMLElement,
+      track = host.shadowRoot?.querySelector('[data_v_scroll_track="yes"]') as HTMLElement;
+
+    setLayout({ track, viewport, virtual_height: 5000, viewport_height: 400 });
+    Object.defineProperty(host, "clientWidth", {
+      configurable: true,
+      value: 300,
+    });
+    host.getBoundingClientRect = vi.fn(() => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 300,
+      bottom: 400,
+      width: 300,
+      height: 400,
+      toJSON: () => ({}),
+    })) as unknown as typeof host.getBoundingClientRect;
+    instance.sync();
+    expect(host.dataset.trackHovered).toBe("no");
+
+    host.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 260 }));
+    expect(host.dataset.trackHovered).toBe("no");
+
+    host.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 296 }));
+    expect(host.dataset.trackHovered).toBe("yes");
+
+    host.dispatchEvent(new PointerEvent("pointerleave", { bubbles: true }));
+    expect(host.dataset.trackHovered).toBe("no");
+
+    instance.destroy();
+  });
+
   it("hides scrollbar when content fits viewport", () => {
     const host = document.createElement("v-scroll");
     document.body.append(host);

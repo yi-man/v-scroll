@@ -13,7 +13,7 @@
   --v-scroll-thumb-min-size: 16px;
 }
 
-/* v-scroll {
+v-scroll {
   color: var(--v-scroll-text);
   display: block;
 
@@ -41,7 +41,8 @@
     inline-size: var(--v-scroll-track-width);
     opacity: 0;
     border-radius: 999px;
-    transition: opacity 160ms ease;
+    pointer-events: none;
+    transition: opacity 160ms ease 240ms;
     position: absolute;
     inset-block: 0;
     inset-inline-end: var(--v-scroll-track-inset);
@@ -53,12 +54,16 @@
     border-radius: var(--v-scroll-thumb-radius);
     background: var(--v-scroll-thumb-bg);
     place-items: center;
+    pointer-events: auto;
     transition: background-color 160ms ease;
     display: grid;
   }
 
-  &[data-scrollable="yes"]::part(track) {
+  &[data-scrollable="yes"][data-track-hovered="yes"]::part(track),
+  &[data-scrollable="yes"][data-scrolling="yes"]::part(track),
+  &[data-scrollable="yes"][data-dragging="yes"]::part(track) {
     opacity: 1;
+    transition-delay: 0ms;
   }
 
   &[data-thumb-hovered="yes"]::part(thumb) {
@@ -68,4 +73,4 @@
   &[data-dragging="yes"]::part(thumb) {
     background: var(--v-scroll-thumb-bg-dragging);
   }
-} */
+}
