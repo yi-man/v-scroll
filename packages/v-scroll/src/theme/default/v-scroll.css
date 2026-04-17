@@ -73,7 +73,6 @@ v-scroll {
     border-radius: var(--v-scroll-thumb-radius);
     background: var(--v-scroll-thumb-bg);
     transition: background-color 160ms ease;
-    cursor: pointer;
   }
 
   &[data-scrollable="yes"]:hover::part(track),

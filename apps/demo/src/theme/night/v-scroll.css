@@ -67,7 +67,6 @@ v-scroll {
     min-block-size: var(--v-scroll-thumb-min-size);
     border-radius: var(--v-scroll-thumb-radius);
     background: var(--v-scroll-thumb-bg);
-    cursor: pointer;
     place-items: center;
     transition: background-color 160ms ease;
     display: grid;

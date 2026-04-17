@@ -53,6 +53,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
       start_thumb_offset: number;
     } | null = null,
     body_user_select = "",
+    is_thumb_hovered = false,
     is_destroyed = false;
 
   const getVirtualHeight = () => viewport.scrollHeight;
@@ -92,7 +93,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     host.dataset.scrollable = YES;
     thumb.style.display = "";
     thumb.style.blockSize = `${state.thumb_height}px`;
-    thumb.style.cursor = drag_state ? GRAB_CURSOR : SCROLL_CURSOR;
+    thumb.style.cursor = drag_state ? GRAB_CURSOR : is_thumb_hovered ? SCROLL_CURSOR : "";
     thumb.style.transform = `translateY(${calcThumbOffset({
       scroll_top: state.scroll_top,
       thumb_height: state.thumb_height,
@@ -125,9 +126,19 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
     thumb.style.cursor = "";
   };
 
-  const handleThumbPointerEnter = () => {};
+  const handleThumbPointerEnter = () => {
+    is_thumb_hovered = true;
+    if (!drag_state && state.thumb_height > 0) {
+      thumb.style.cursor = SCROLL_CURSOR;
+    }
+  };
 
-  const handleThumbPointerLeave = () => {};
+  const handleThumbPointerLeave = () => {
+    is_thumb_hovered = false;
+    if (!drag_state) {
+      clearThumbCursor();
+    }
+  };
 
   const handleThumbPointerDown = (event: PointerEvent) => {
     if (event.button !== 0 || state.thumb_height === 0) {
@@ -163,7 +174,7 @@ export const createVScroll = (host: HTMLElement, config: VScrollConfig = {}) => 
 
     drag_state = null;
     host.dataset.dragging = NO;
-    thumb.style.cursor = state.thumb_height > 0 ? SCROLL_CURSOR : "";
+    thumb.style.cursor = state.thumb_height > 0 && is_thumb_hovered ? SCROLL_CURSOR : "";
     document.body.style.userSelect = body_user_select;
     body_user_select = "";
   };
@@ -296,4 +307,3 @@ export const registerVScroll = () => {
     },
   );
 };
-

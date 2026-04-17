@@ -43,4 +43,16 @@ describe("package structure", () => {
     expect(package_peer_dependencies?.vite).toBeTypeOf("string");
     expect(vScrollThemePlugin).toBeTypeOf("function");
   });
+
+  it("keeps thumb cursor control in runtime instead of hardcoding pointer in themes", async () => {
+    const default_theme_path = join(import.meta.dirname, "..", "src/theme/default/v-scroll.css"),
+      demo_theme_path = join(import.meta.dirname, "..", "..", "..", "apps/demo/src/theme/night/v-scroll.css"),
+      [default_theme_css, demo_theme_css] = await Promise.all([
+        readFile(default_theme_path, "utf8"),
+        readFile(demo_theme_path, "utf8"),
+      ]);
+
+    expect(default_theme_css).not.toContain("cursor: pointer;");
+    expect(demo_theme_css).not.toContain("cursor: pointer;");
+  });
 });
